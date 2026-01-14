@@ -1,0 +1,3171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Assistant - Aira</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Hero header -->
+        <h1>🎤 Aira</h1>
+        <p class="subtitle">Voice-Powered Assistant</p>
+
+        <!-- Live status text for voice flow/state machine -->
+        <div class="status-box">
+            <span class="status-text" id="statusText">Initializing...</span>
+        </div>
+
+        <!-- Mic toggle for starting/stopping recognition -->
+        <button class="mic-button" id="micButton" aria-label="Click to start">🎤</button>
+
+    <script async src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@latest/dist/face-api.js"></script>
+
+        <div class="transcription hidden" id="transcription"></div>
+        <div class="response-box hidden" id="responseBox"></div>
+        <div class="error-box hidden" id="errorBox"></div>
+
+        <!-- Login Form: email/password + optional face verification -->
+        <div id="loginSection" class="auth-section hidden">
+            <h3>Login</h3>
+            
+            <!-- Face-Only Login Section (NEW) -->
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="color: white; margin: 0 0 15px 0; font-size: 1.1em;">🔐 Face Recognition Login</h4>
+                <p style="color: rgba(255,255,255,0.9); font-size: 0.9em; margin-bottom: 15px;">Login instantly using just your face - no password needed!</p>
+                <video id="faceOnlyVideo" width="100%" height="300" style="border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; background: #000; margin: 10px 0; display: none;"></video>
+                <canvas id="faceOnlyCanvas" width="100" height="100" style="display: none;"></canvas>
+                <div style="display: flex; gap: 10px; margin: 10px 0; flex-wrap: wrap;">
+                    <button type="button" class="btn" id="startFaceOnlyBtn" onclick="startFaceOnlyLogin()" style="background: white; color: #667eea; flex: 1; min-width: 150px;">
+                        📸 Login with Face
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="captureFaceOnlyBtn" onclick="captureFaceOnly()" style="display: none; flex: 1; min-width: 120px;">Capture Face</button>
+                    <button type="button" class="btn btn-secondary" id="retakeFaceOnlyBtn" onclick="startFaceOnlyLogin()" style="display: none; flex: 1; min-width: 120px;">Retake</button>
+                </div>
+                <div id="faceOnlyStatusMsg" style="margin: 10px 0; padding: 10px; border-radius: 4px; display: none; background: rgba(255,255,255,0.2); color: white;"></div>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0; color: #999; display: flex; align-items: center; gap: 10px;">
+                <div style="flex: 1; height: 1px; background: #ddd;"></div>
+                <span>or use traditional login</span>
+                <div style="flex: 1; height: 1px; background: #ddd;"></div>
+            </div>
+            
+            <button class="btn btn-google" onclick="loginWithGoogle()">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%234285F4' d='M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'/%3E%3Cpath fill='%2334A853' d='M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z'/%3E%3Cpath fill='%23FBBC05' d='M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z'/%3E%3Cpath fill='%23EA4335' d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'/%3E%3Cpath fill='none' d='M1 1h22v22H1z'/%3E%3C/svg%3E" alt="Google" class="google-icon">
+                Login with Google
+            </button>
+            <div style="text-align: center; margin: 15px 0; color: #999;">or use email & password</div>
+            <div class="input-group">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" placeholder="your@email.com">
+            </div>
+            <div class="input-group">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" placeholder="••••••••">
+            </div>
+
+            <!-- Face Verification Section -->
+            <div class="input-group" id="loginFaceSection">
+                <label>Face Verification (Required)</label>
+                <p style="margin: 10px 0; font-size: 0.9em; color: #666;">Please capture your face to complete login</p>
+                <video id="loginVideo" width="100%" height="300" style="border: 2px solid #ddd; border-radius: 8px; background: #000; margin: 10px 0; display: none;"></video>
+                <canvas id="loginCanvas" width="100" height="100" style="display: none;"></canvas>
+                <div style="display: flex; gap: 10px; margin: 10px 0;">
+                    <button type="button" class="btn btn-primary" id="startLoginCameraBtn" onclick="startLoginFaceCapture()">Start Camera</button>
+                    <button type="button" class="btn btn-secondary" id="captureLoginFaceBtn" onclick="captureLoginFace()" style="display: none;">Capture Face</button>
+                    <button type="button" class="btn btn-secondary" id="retakeLoginFaceBtn" onclick="startLoginFaceCapture()" style="display: none;">Retake</button>
+                </div>
+                <div id="loginFaceStatusMsg" style="margin: 10px 0; padding: 10px; border-radius: 4px; display: none;"></div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="submitLogin()">Login</button>
+                <button class="btn btn-secondary" onclick="cancelAuth()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Register Form: name/email/password + mandatory face registration -->
+        <div id="registerSection" class="auth-section hidden">
+            <h3>Register</h3>
+            <div class="input-group">
+                <label for="regName">Name</label>
+                <input type="text" id="regName" placeholder="Your Name" required>
+            </div>
+            <!-- Full Name removed - simplified registration form -->
+            <div class="input-group">
+                <label for="regEmail">Email</label>
+                <input type="email" id="regEmail" placeholder="your@email.com" required>
+            </div>
+            <div class="input-group">
+                <label for="regPassword">Password</label>
+                <input type="password" id="regPassword" placeholder="••••••••" required>
+            </div>
+            
+            <!-- Face Registration Section -->
+            <div class="input-group" id="faceRegistrationSection">
+                <label>Face Registration</label>
+                <p style="margin: 10px 0; font-size: 0.9em; color: #666;">Capture your face for secure biometric login</p>
+                <video id="registrationVideo" width="100%" height="300" style="border: 2px solid #ddd; border-radius: 8px; background: #000; margin: 10px 0; display: none;"></video>
+                <canvas id="registrationCanvas" width="100" height="100" style="display: none;"></canvas>
+                <div style="display: flex; gap: 10px; margin: 10px 0;">
+                    <button type="button" class="btn btn-primary" id="startCameraBtn" onclick="startFaceCapture()">Start Camera</button>
+                    <button type="button" class="btn btn-secondary" id="captureFaceBtn" onclick="captureFace()" style="display: none;">Capture Face</button>
+                    <button type="button" class="btn btn-secondary" id="retakeFaceBtn" onclick="startFaceCapture()" style="display: none;">Retake</button>
+                </div>
+                <div id="faceStatusMsg" style="margin: 10px 0; padding: 10px; border-radius: 4px; display: none;"></div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="submitRegister()">Register</button>
+                <button class="btn btn-secondary" onclick="cancelAuth()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Section: shown after successful auth + face verification -->
+        <div id="dashboardSection" class="auth-section hidden">
+            <div style="text-align: right; margin-bottom: 20px;">
+                <button class="btn btn-secondary" style="width: auto; padding: 8px 15px;" onclick="logout()" id="logoutBtn">Logout</button>
+            </div>
+            <h2 id="welcomeText">Welcome, <span id="userName">User</span>!</h2>
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: left;">
+                <h3 style="margin-bottom: 15px; color: #333;" id="profileTitle">👤 Profile Information</h3>
+                <div style="display: grid; gap: 10px;">
+                    <div><strong id="emailLabel">Email:</strong> <span id="userEmail">-</span></div>
+                    <div><strong id="nameLabel">Name:</strong> <span id="userFullName">-</span></div>
+                    <div><strong id="accountCreatedLabel">Account Created:</strong> <span id="userCreated">-</span></div>
+                </div>
+            </div>
+            <div style="background: #f8f9fa; border-radius: 10px; padding: 20px; margin: 20px 0; text-align: left;">
+                <h3 style="margin-bottom: 15px; color: #333;" id="voicePrefsTitle">⚙️ Voice Preferences</h3>
+                <div style="display: grid; gap: 15px;">
+                    <div class="input-group">
+                        <label for="voiceSpeed" id="voiceSpeedLabel">Voice Speed</label>
+                        <input type="range" id="voiceSpeed" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('voiceSpeedValue').textContent = parseFloat(this.value).toFixed(1) + 'x'" onchange="updatePreference('voice_speed', this.value)">
+                        <small id="voiceSpeedValue">1.0x</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="voicePitch" id="voicePitchLabel">Voice Pitch</label>
+                        <input type="range" id="voicePitch" min="0.5" max="2" step="0.1" value="1" oninput="document.getElementById('voicePitchValue').textContent = parseFloat(this.value).toFixed(1) + 'x'" onchange="updatePreference('voice_pitch', this.value)">
+                        <small id="voicePitchValue">1.0x</small>
+                    </div>
+                    <div class="input-group">
+                        <label for="language" id="languageLabel">Language</label>
+                        <select id="language" onchange="updatePreference('language', this.value)" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px;">
+                            <option value="en-US">English (US)</option>
+                            <option value="en-IN">English (India)</option>
+                            <option value="hi-IN">हिंदी (Hindi)</option>
+                            <option value="ta-IN">தமிழ் (Tamil) - Regional Language</option>
+                            <option value="te-IN">తెలుగు (Telugu) - Regional Language</option>
+                            <option value="kn-IN">ಕನ್ನಡ (Kannada) - Regional Language</option>
+                            <option value="ml-IN">മലയാളം (Malayalam) - Regional Language</option>
+                            <option value="es-ES">Spanish</option>
+                            <option value="fr-FR">French</option>
+                            <option value="de-DE">German</option>
+                        </select>
+                        <div id="languageWarning" style="color: #d9534f; margin-top: 8px; padding: 8px; background: #f8d7da; border-radius: 4px; display: none; font-size: 0.9em;"></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="testVoice()" style="margin-top: 20px;" id="testVoiceBtn">Test Voice</button>
+        </div>
+
+        <div class="state-info" id="stateInfo"></div>
+        <button id="enableAudioBtn" class="btn btn-primary hidden" style="margin-top:12px;">Enable audio</button>
+    </div>
+
+    <script>
+        // STATE MACHINE: drives voice prompts and UI visibility
+        const STATE = {
+            IDLE: 'IDLE',
+            AWAKE: 'AWAKE',
+            LISTENING_FOR_COMMAND: 'LISTENING_FOR_COMMAND',
+            WAITING_EMAIL: 'WAITING_EMAIL',
+            WAITING_PASSWORD: 'WAITING_PASSWORD',
+            WAITING_NAME: 'WAITING_NAME',
+            WAITING_REG_EMAIL: 'WAITING_REG_EMAIL',
+            WAITING_REG_PASSWORD: 'WAITING_REG_PASSWORD',
+            WAITING_FACE_CAPTURE: 'WAITING_FACE_CAPTURE',
+            LOGGED_IN: 'LOGGED_IN',
+        };
+
+        // Browser speech APIs
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const SpeechSynthesis = window.speechSynthesis;
+
+        let currentState = STATE.IDLE;
+        let recognition = null;
+        let wakeWordRecognition = null;
+        let audioEnabled = false;
+        let isListening = false;
+        let intentionallyStopped = false;
+        let pendingSpeech = [];
+        let audioContext = null;
+        let currentLanguage = 'en-US';
+
+        const ASSISTANT_NAME = 'aira';
+
+        const LANGUAGE_NAMES = {
+            'en-US': { en: 'English (US)', native: 'English (US)' },
+            'en-IN': { en: 'English (India)', native: 'English (India)' },
+            'hi-IN': { en: 'Hindi', native: 'हिंदी' },
+            'ta-IN': { en: 'Tamil', native: 'தமிழ்' },
+            'te-IN': { en: 'Telugu', native: 'తెలుగు' },
+            'kn-IN': { en: 'Kannada', native: 'ಕನ್ನಡ' },
+            'ml-IN': { en: 'Malayalam', native: 'മലയാളം' },
+            'es-ES': { en: 'Spanish', native: 'Español' },
+            'fr-FR': { en: 'French', native: 'Français' },
+            'de-DE': { en: 'German', native: 'Deutsch' }
+        };
+
+        const LANGUAGE_VOICE_MAP = {
+            'en-US': 'en-US',
+            'en-IN': 'en-IN',
+            'hi-IN': 'hi-IN',
+            'ta-IN': 'ta-IN',  // Tamil - will use English fallback if unavailable
+            'te-IN': 'te-IN',  // Telugu - will use English fallback if unavailable
+            'kn-IN': 'kn-IN',  // Kannada - will use English fallback if unavailable
+            'ml-IN': 'ml-IN',  // Malayalam - will use English fallback if unavailable
+            'es-ES': 'es-ES',
+            'fr-FR': 'fr-FR',
+            'de-DE': 'de-DE'
+        };
+
+        // UI + voice copy by locale
+        const TRANSLATIONS = {
+            'en-US': {
+                greeting: 'Hello, I am Aira.',
+                wake_prompt: 'Say my name to wake me up',
+                awake: 'Awake',
+                how_can_i_help: 'How can I help you today?',
+                say_command: 'Say login, login with google, or register',
+                email_prompt: 'Say your email address',
+                password_prompt: 'Say your password',
+                name_prompt: 'Say your name',
+                login_success: 'Login successful. Welcome!',
+                register_success: 'Registration successful. Welcome!',
+                login_failed: 'Login failed. Please try again.',
+                register_failed: 'Registration failed. Please try again.',
+                cancelled: 'Cancelled. Say my name to wake me up',
+                logged_out: 'Logged out. Say my name to wake me up',
+                welcome_back: 'Welcome back',
+                dashboard_loaded: 'Dashboard loaded',
+                language_changed: 'Language changed to',
+                voice_speed_changed: 'Voice speed updated to',
+                voice_pitch_changed: 'Voice pitch updated to',
+                all_fields_required: 'All fields are required. Please try again.',
+                profile_information: 'Profile Information',
+                email: 'Email',
+                name: 'Name',
+                account_created: 'Account Created',
+                voice_preferences: 'Voice Preferences',
+                voice_speed: 'Voice Speed',
+                voice_pitch: 'Voice Pitch',
+                language: 'Language',
+                test_voice: 'Test Voice',
+                logout: 'Logout',
+                login: 'Login',
+                register: 'Register',
+                cancel: 'Cancel',
+                password: 'Password'
+            },
+            'en-IN': {
+                greeting: 'Hello, I am Aira.',
+                wake_prompt: 'Say my name to wake me up',
+                awake: 'Awake',
+                how_can_i_help: 'How can I help you today?',
+                say_command: 'Say login, login with google, or register',
+                email_prompt: 'Say your email address',
+                password_prompt: 'Say your password',
+                name_prompt: 'Say your name',
+                login_success: 'Login successful. Welcome!',
+                register_success: 'Registration successful. Welcome!',
+                login_failed: 'Login failed. Please try again.',
+                register_failed: 'Registration failed. Please try again.',
+                cancelled: 'Cancelled. Say my name to wake me up',
+                logged_out: 'Logged out. Say my name to wake me up',
+                welcome_back: 'Welcome back',
+                dashboard_loaded: 'Dashboard loaded',
+                language_changed: 'Language changed to',
+                voice_speed_changed: 'Voice speed updated to',
+                voice_pitch_changed: 'Voice pitch updated to',
+                all_fields_required: 'All fields are required. Please try again.'
+            },
+            'hi-IN': {
+                greeting: 'नमस्ते, मैं एरिया हूँ।',
+                wake_prompt: 'मुझे जगाने के लिए मेरा नाम कहें',
+                awake: 'जागृत',
+                how_can_i_help: 'मैं आपकी कैसे मदद कर सकता हूँ?',
+                say_command: 'लॉगिन, गूगल से लॉगिन, या पंजीकरण कहें',
+                email_prompt: 'अपना ईमेल पता कहें',
+                password_prompt: 'अपना पासवर्ड कहें',
+                name_prompt: 'अपना नाम कहें',
+                login_success: 'लॉगिन सफल। स्वागत है!',
+                register_success: 'पंजीकरण सफल। स्वागत है!',
+                login_failed: 'लॉगिन विफल। कृपया पुनः प्रयास करें।',
+                register_failed: 'पंजीकरण विफल। कृपया पुनः प्रयास करें।',
+                cancelled: 'रद्द किया गया। मुझे जगाने के लिए मेरा नाम कहें',
+                logged_out: 'लॉग आउट किया गया। मुझे जगाने के लिए मेरा नाम कहें',
+                welcome_back: 'स्वागत है',
+                dashboard_loaded: 'डैशबोर्ड लोड हो गया',
+                language_changed: 'भाषा बदल दी गई है',
+                voice_speed_changed: 'वॉयस स्पीड अपडेट की गई है',
+                voice_pitch_changed: 'वॉयस पिच अपडेट की गई है',
+                all_fields_required: 'सभी फील्ड आवश्यक हैं। कृपया पुनः प्रयास करें।',
+                profile_information: 'प्रोफाइल जानकारी',
+                email: 'ईमेल',
+                name: 'नाम',
+                account_created: 'खाता बनाया गया',
+                voice_preferences: 'वॉयस प्राथमिकताएं',
+                voice_speed: 'वॉयस स्पीड',
+                voice_pitch: 'वॉयस पिच',
+                language: 'भाषा',
+                test_voice: 'वॉयस टेस्ट करें',
+                logout: 'लॉग आउट',
+                login: 'लॉगिन',
+                register: 'पंजीकरण',
+                cancel: 'रद्द करें',
+                password: 'पासवर्ड'
+            },
+            'ta-IN': {
+                greeting: 'வணக்கம், நான் ஐரியா.',
+                wake_prompt: 'என்னை எழுப்ப என் பெயரைச் சொல்லுங்கள்',
+                awake: 'விழித்து',
+                how_can_i_help: 'இன்று உங்களுக்கு நான் எவ்வாறு உதவ முடியும்?',
+                say_command: 'லாகின், கூகுளுடன் லாகின், அல்லது பதிவு செய் என்று சொல்லுங்கள்',
+                email_prompt: 'உங்கள் மின்னஞ்சல் முகவரியைச் சொல்லுங்கள்',
+                password_prompt: 'உங்கள் கடவுச்சொல்லைச் சொல்லுங்கள்',
+                name_prompt: 'உங்கள் பெயரைச் சொல்லுங்கள்',
+                login_success: 'லாகிन் வெற்றிகரமாக. வரவேற்கிறோம்!',
+                register_success: 'பதிவு வெற்றிகரமாக. வரவேற்கிறோம்!',
+                login_failed: 'லாகின் தோல்வியடைந்தது. மீண்டும் முயற்சி செய்யுங்கள்.',
+                register_failed: 'பதிவு தோல்வியடைந்தது. மீண்டும் முயற்சி செய்யுங்கள்.',
+                cancelled: 'ரத்து செய்யப்பட்டது. என்னை எழுப்ப என் பெயரைச் சொல்லுங்கள்',
+                logged_out: 'வெளியே வந்தாய். என்னை எழுப்ப என் பெயரைச் சொல்லுங்கள்',
+                welcome_back: 'நலமுடன் வரவேற்கிறோம்',
+                dashboard_loaded: 'டாஷ்போர்ட் ஏற்றப்பட்டது',
+                language_changed: 'மொழி மாற்றப்பட்டது',
+                voice_speed_changed: 'குரல் வேகம் புதுப்பிக்கப்பட்டது',
+                voice_pitch_changed: 'குரல் பிச் புதுப்பிக்கப்பட்டது',
+                all_fields_required: 'அனைத்து புலங்களும் தேவை. மீண்டும் முயற்சி செய்யுங்கள்.',
+                profile_information: 'சுயவிவர தகவல்',
+                email: 'மின்னஞ்சல்',
+                name: 'பெயர்',
+                account_created: 'கணக்கு உருவாக்கப்பட்டது',
+                voice_preferences: 'குரல் விருப்பங்கள்',
+                voice_speed: 'குரல் வேகம்',
+                voice_pitch: 'குரல் பிச்',
+                language: 'மொழி',
+                test_voice: 'குரலைப் பரிசோதிக்கவும்',
+                logout: 'வெளியே வாருங்கள்',
+                login: 'உள்நுழைக',
+                register: 'பதிவு செய்',
+                cancel: 'ரத்து',
+                password: 'கடவுச்சொல்'
+            },
+            'te-IN': {
+                greeting: 'హలో, నేను ఐరియా.',
+                wake_prompt: 'నన్ను మేల్కోల్చడానికి నా పేరు చెప్పండి',
+                awake: 'మేల్కొన్న',
+                how_can_i_help: 'ఈ రోజు నేను మీకు ఎలా సహాయం చేయగలను?',
+                say_command: 'లాగిన్, గూగుల్‌తో లాగిన్ చేయండి లేదా నమోదు చేయండి',
+                email_prompt: 'మీ ఇమెయిల్ చిరునామాను చెప్పండి',
+                password_prompt: 'మీ పాస్‌వర్డ్‌ను చెప్పండి',
+                name_prompt: 'మీ పేరు చెప్పండి',
+                login_success: 'లాగిన్ విజయవంతమైంది. స్వాగతం!',
+                register_success: 'నమోదు విజయవంతమైంది. స్వాగతం!',
+                login_failed: 'లాగిన్ విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+                register_failed: 'నమోదు విఫలమైంది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+                cancelled: 'రద్దు చేయబడింది. నన్ను మేల్కోల్చడానికి నా పేరు చెప్పండి',
+                logged_out: 'లాగ్ అవుట్ చేయబడింది. నన్ను మేల్కోల్చడానికి నా పేరు చెప్పండి',
+                welcome_back: 'స్వాగతం',
+                dashboard_loaded: 'డ్యాష్‌బోర్డ్ లోడ్ చేయబడింది',
+                language_changed: 'భాష మార్చబడింది',
+                voice_speed_changed: 'వాయిస్ స్పీడ్ అప్‌డేట్ చేయబడింది',
+                voice_pitch_changed: 'వాయిస్ పిచ్ అప్‌డేట్ చేయబడింది',
+                all_fields_required: 'అన్ని ఫీల్డ్‌లు అవసరం. దయచేసి మళ్లీ ప్రయత్నించండి.',
+                profile_information: 'ప్రొఫైల్ సమాచారం',
+                email: 'ఇమెయిల్',
+                name: 'పేరు',
+                account_created: 'ఖాతా సృష్టించబడింది',
+                voice_preferences: 'వాయిస్ ప్రాధాన్యతలు',
+                voice_speed: 'వాయిస్ స్పీడ్',
+                voice_pitch: 'వాయిస్ పిచ్',
+                language: 'భాష',
+                test_voice: 'వాయిస్‌ను పరీక్షించండి',
+                logout: 'లాగ్ అవుట్',
+                login: 'లాగిన్',
+                register: 'నమోదు',
+                cancel: 'రద్దు',
+                password: 'పాస్‌వర్డ్'
+            },
+            'kn-IN': {
+                greeting: 'ನಮಸ್ಕಾರ, ನಾನು ಐರಿಯಾ.',
+                wake_prompt: 'ನನ್ನನ್ನು ಜಾಗರೂಕಗೊಳಿಸಲು ನನ್ನ ಹೆಸರು ಹೇಳಿ',
+                awake: 'ಜಾಗೃತ',
+                how_can_i_help: 'ಈ ಹೊತ್ತು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?',
+                say_command: 'ಲಾಗಿನ್, ಗೂಗಲ್‌ನೊಂದಿಗೆ ಲಾಗಿನ್ ಮಾಡಿ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ',
+                email_prompt: 'ನಿಮ್ಮ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ಹೇಳಿ',
+                password_prompt: 'ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಹೇಳಿ',
+                name_prompt: 'ನಿಮ್ಮ ಹೆಸರು ಹೇಳಿ',
+                login_success: 'ಲಾಗಿನ್ ಯಶಸ್ವಿ. ಸ್ವಾಗತ!',
+                register_success: 'ನೋಂದಣಿ ಯಶಸ್ವಿ. ಸ್ವಾಗತ!',
+                login_failed: 'ಲಾಗಿನ್ ವಿಫಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                register_failed: 'ನೋಂದಣಿ ವಿಫಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                cancelled: 'ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ. ನನ್ನನ್ನು ಜಾಗರೂಕಗೊಳಿಸಲು ನನ್ನ ಹೆಸರು ಹೇಳಿ',
+                logged_out: 'ಲಾಗ್ ಔಟ್ ಮಾಡಲಾಗಿದೆ. ನನ್ನನ್ನು ಜಾಗರೂಕಗೊಳಿಸಲು ನನ್ನ ಹೆಸರು ಹೇಳಿ',
+                welcome_back: 'ಸ್ವಾಗತ',
+                dashboard_loaded: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಲೋಡ್ ಆಗಿದೆ',
+                language_changed: 'ಭಾಷೆ ಬದಲಾಯಿಸಲಾಗಿದೆ',
+                voice_speed_changed: 'ವಾಯ್ಸ್ ಸ್ಪೀಡ್ ಅನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ',
+                voice_pitch_changed: 'ವಾಯ್ಸ್ ಪಿಚ್ ಅನ್ನು ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ',
+                all_fields_required: 'ಎಲ್ಲಾ ಕ್ಷೇತ್ರಗಳು ಅಗತ್ಯ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+                profile_information: 'ಪ್ರೊಫೈಲ್ ಮಾಹಿತಿ',
+                email: 'ಇಮೇಲ್',
+                name: 'ಹೆಸರು',
+                account_created: 'ಖಾತೆ ರಚಿಸಲಾಗಿದೆ',
+                voice_preferences: 'ವಾಯ್ಸ್ ಆದ್ಯತೆಗಳು',
+                voice_speed: 'ವಾಯ್ಸ್ ಸ್ಪೀಡ್',
+                voice_pitch: 'ವಾಯ್ಸ್ ಪಿಚ್',
+                language: 'ಭಾಷೆ',
+                test_voice: 'ವಾಯ್ಸ್ ಪರೀಕ್ಷಿಸಿ',
+                logout: 'ಲಾಗ್ ಔಟ್',
+                login: 'ಲಾಗಿನ್',
+                register: 'ನೋಂದಣಿ',
+                cancel: 'ರದ್ದುಗೊಳಿಸಿ',
+                password: 'ಪಾಸ್‌ವರ್ಡ್'
+            },
+            'ml-IN': {
+                greeting: 'നമസ്കാരം, ഞാൻ ഐരിയ ആണ്.',
+                wake_prompt: 'എന്നെ ഉണർത്തുന്നതിന് എന്റെ പേര് പറയുക',
+                awake: 'ഉണർന്ന',
+                how_can_i_help: 'ഇന്ന് ഞാൻ നിങ്ങളെ എങ്ങനെ സഹായിക്കാം?',
+                say_command: 'ലോഗിൻ, Google ഉപയോഗിച്ച് ലോഗിൻ, അല്ലെങ്കിൽ രജിസ്റ്റർ പറയുക',
+                email_prompt: 'നിങ്ങളുടെ ഇമെയിൽ വിലാസം പറയുക',
+                password_prompt: 'നിങ്ങളുടെ പാസ്‌വേഡ് പറയുക',
+                name_prompt: 'നിങ്ങളുടെ പേര് പറയുക',
+                login_success: 'ലോഗിൻ വിജയകരമായി. സ്വാഗതം!',
+                register_success: 'രജിസ്ട്രേഷൻ വിജയകരമായി. സ്വാഗതം!',
+                login_failed: 'ലോഗിൻ പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക.',
+                register_failed: 'രജിസ്ട്രേഷൻ പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക.',
+                cancelled: 'റദ്ദാക്കപ്പെട്ടു. എന്നെ ഉണർത്തുന്നതിന് എന്റെ പേര് പറയുക',
+                logged_out: 'ലോഗ് ഔട്ട് ചെയ്തു. എന്നെ ഉണർത്തുന്നതിന് എന്റെ പേര് പറയുക',
+                welcome_back: 'സ്വാഗതം',
+                dashboard_loaded: 'ഡാഷ്‌ബോർഡ് ലോഡ് ചെയ്തു',
+                language_changed: 'ഭാഷ മാറ്റിയെടുത്തു',
+                voice_speed_changed: 'വോയ്‌സ് സ്‌പീഡ് അപ്‌ഡേറ്റ് ചെയ്തു',
+                voice_pitch_changed: 'വോയ്‌സ് പിച്ച് അപ്‌ഡേറ്റ് ചെയ്തു',
+                all_fields_required: 'എല്ലാ ഫീൽഡുകളും ആവശ്യമാണ്. വീണ്ടും ശ്രമിക്കുക.',
+                profile_information: 'പ്രൊഫൈൽ വിവരം',
+                email: 'ഇമെയിൽ',
+                name: 'പേര്',
+                account_created: 'അക്കൗണ്ട് സൃഷ്ടിച്ചു',
+                voice_preferences: 'വോയ്‌സ് ലഭ്യതകൾ',
+                voice_speed: 'വോയ്‌സ് സ്‌പീഡ്',
+                voice_pitch: 'വോയ്‌സ് പിച്ച്',
+                language: 'ഭാഷ',
+                test_voice: 'വോയ്‌സ് പരീക്ഷിക്കുക',
+                logout: 'ലോഗ് ഔട്ട്',
+                login: 'ലോഗിൻ ചെയ്യുക',
+                register: 'രജിസ്റ്റർ ചെയ്യുക',
+                cancel: 'റദ്ദാക്കുക',
+                password: 'പാസ്‌വേഡ്'
+            }
+        };
+
+        function getTranslation(key) {
+            const trans = TRANSLATIONS[currentLanguage] || TRANSLATIONS['en-US'];
+            return trans[key] || key;
+        }
+
+        // Update all UI text to selected language
+        function updateUILanguage(lang) {
+            // Update dashboard section labels only (preserve user data values)
+            const emailLabel = document.getElementById('emailLabel');
+            if (emailLabel) {
+                emailLabel.textContent = getTranslation('email') + ': ';
+            }
+            
+            const nameLabel = document.getElementById('nameLabel');
+            if (nameLabel) {
+                nameLabel.textContent = getTranslation('name') + ': ';
+            }
+            
+            const accountLabel = document.getElementById('accountCreatedLabel');
+            if (accountLabel) {
+                accountLabel.textContent = getTranslation('account_created') + ': ';
+            }
+            
+            const profileTitle = document.getElementById('profileTitle');
+            if (profileTitle) {
+                profileTitle.textContent = '👤 ' + getTranslation('profile_information');
+            }
+            
+            const voicePrefsTitle = document.getElementById('voicePrefsTitle');
+            if (voicePrefsTitle) {
+                voicePrefsTitle.textContent = '⚙️ ' + getTranslation('voice_preferences');
+            }
+            
+            const voiceSpeedLabel = document.getElementById('voiceSpeedLabel');
+            if (voiceSpeedLabel) {
+                voiceSpeedLabel.textContent = getTranslation('voice_speed');
+            }
+            
+            const voicePitchLabel = document.getElementById('voicePitchLabel');
+            if (voicePitchLabel) {
+                voicePitchLabel.textContent = getTranslation('voice_pitch');
+            }
+            
+            const languageLabel = document.getElementById('languageLabel');
+            if (languageLabel) {
+                languageLabel.textContent = getTranslation('language');
+            }
+            
+            const testVoiceBtn = document.getElementById('testVoiceBtn');
+            if (testVoiceBtn) {
+                testVoiceBtn.textContent = getTranslation('test_voice');
+            }
+            
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.textContent = getTranslation('logout');
+            }
+            
+            // Update welcome text while preserving user name data
+            const welcomeText = document.getElementById('welcomeText');
+            if (welcomeText) {
+                const userName = document.getElementById('userName')?.textContent || 'User';
+                welcomeText.textContent = getTranslation('welcome_back') + ', ' + userName + '!';
+            }
+            
+            // Update status text if visible
+            const statusText = document.getElementById('statusText');
+            if (statusText && statusText.textContent) {
+                if (currentState === STATE.IDLE) {
+                    statusText.textContent = getTranslation('wake_prompt');
+                } else if (currentState === STATE.AWAKE) {
+                    statusText.textContent = getTranslation('awake');
+                }
+            }
+            
+            console.log(`UI language updated to: ${lang}`);
+        }
+
+        function levenshtein(a, b) {
+            if (!a || !b) return (a||'').length || (b||'').length;
+            const m = a.length, n = b.length;
+            const dp = Array.from({length: m+1}, () => new Array(n+1));
+            for (let i=0;i<=m;i++) dp[i][0]=i;
+            for (let j=0;j<=n;j++) dp[0][j]=j;
+            for (let i=1;i<=m;i++){
+                for (let j=1;j<=n;j++){
+                    const cost = a[i-1]===b[j-1]?0:1;
+                    dp[i][j] = Math.min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+cost);
+                }
+            }
+            return dp[m][n];
+        }
+
+        function isWakeWordMatch(text) {
+            const lower = text.toLowerCase().replace(/[^a-z\s]/g,'').trim();
+            
+            // Wake words in different languages
+            const wakeWords = {
+                'en-US': ['aira', 'aria', 'hey aira', 'hello aira'],
+                'en-IN': ['aira', 'aria', 'hey aira', 'hello aira'],
+                'hi-IN': ['आयरा', 'airaa', 'aira'],  // Hindi: आयरा or transliterated aira
+                'ta-IN': ['ஐரா', 'aira'],  // Tamil: ஐரா or transliterated aira
+                'te-IN': ['ఐరా', 'aira'],  // Telugu: ఐరా or transliterated aira
+                'kn-IN': ['ಐರಾ', 'aira'],  // Kannada: ಐರಾ or transliterated aira
+                'ml-IN': ['ഐരാ', 'aira'],  // Malayalam: ഐരാ or transliterated aira
+                'es-ES': ['aira', 'aria', 'hola aira'],
+                'fr-FR': ['aira', 'aria', 'salut aira'],
+                'de-DE': ['aira', 'aria', 'hallo aira']
+            };
+            
+            // Get wake words for current language, fallback to English
+            const words = wakeWords[currentLanguage] || wakeWords['en-US'];
+            
+            // Check exact matches (fast path)
+            for (const word of words) {
+                if (lower.includes(word.toLowerCase())) return true;
+            }
+            
+            // Check fuzzy match for 'aira' part - more lenient for early detection
+            const name = 'aira';
+            const parts = lower.split(/\s+/);
+            for (const p of parts) {
+                if (p && (p.includes(name) || name.includes(p))) return true;
+                // Fuzzy match: allow up to 2 character differences for early wake-up
+                if (p && levenshtein(p, name) <= 2) return true;
+            }
+            return false;
+        }
+
+        function updateStatus(text) {
+            document.getElementById('statusText').textContent = text;
+        }
+
+        function showTranscription(text) {
+            const div = document.getElementById('transcription');
+            div.textContent = `You said: "${text}"`;
+            div.classList.remove('hidden');
+        }
+
+        function showResponse(text) {
+            const div = document.getElementById('responseBox');
+            div.textContent = text;
+            div.classList.remove('hidden');
+        }
+
+        function showError(text) {
+            const div = document.getElementById('errorBox');
+            div.textContent = text;
+            div.classList.remove('hidden');
+            setTimeout(() => div.classList.add('hidden'), 5000);
+        }
+
+        function hideAll() {
+            document.getElementById('transcription').classList.add('hidden');
+            document.getElementById('responseBox').classList.add('hidden');
+            document.getElementById('errorBox').classList.add('hidden');
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('registerSection').classList.add('hidden');
+        }
+
+        // Update current state and display; state machine drives which prompts/inputs are active
+        function setState(newState) {
+            currentState = newState;
+            document.getElementById('stateInfo').textContent = `State: ${newState}`;
+        }
+
+        // Main TTS function: cancel any ongoing speech, check audio/voice availability, queue if needed, call performSpeak
+        function speak(text) {
+            if (!SpeechSynthesis) {
+                console.warn('SpeechSynthesis not available');
+                showResponse(text);
+                return;
+            }
+
+            // If no voices are available yet, prompt the user to enable audio (browser may block TTS until user gesture)
+            const availableVoices = SpeechSynthesis.getVoices();
+            if (!availableVoices || availableVoices.length === 0) {
+                console.warn('No TTS voices available yet. Queueing speech and prompting user to enable audio.');
+                // show enable button and fallback to showing text
+                document.getElementById('enableAudioBtn').classList.remove('hidden');
+                showResponse(text);
+                // queue the speech so it can be played after user enables audio
+                pendingSpeech.push(text);
+                return;
+            }
+
+            try {
+                if (recognition && isListening) {
+                    try { recognition.stop(); } catch(e) {}
+                }
+            } catch (e) {}
+
+            // Clear any pending utterances
+            try { SpeechSynthesis.cancel(); } catch(e) {}
+
+            // Ensure audio is enabled
+            if (!audioEnabled) {
+                autoEnableAudio();
+                // Queue speech to be played after audio is enabled
+                pendingSpeech.push(text);
+                return;
+            }
+
+            // Ensure AudioContext is ready if it exists
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume().then(() => {
+                    performSpeak(text);
+                }).catch((e) => {
+                    console.warn('Could not resume AudioContext:', e);
+                    performSpeak(text);
+                });
+            } else {
+                performSpeak(text);
+            }
+        }
+
+        // Execute TTS with voice selection logic: match exact, fallback to Hindi for regional, then EN; restart recognition after finish
+        function performSpeak(text) {
+            // Add slight delay to ensure audio context is ready
+            setTimeout(() => {
+                // Get the voice language to use
+                let voiceLanguage = LANGUAGE_VOICE_MAP[currentLanguage] || currentLanguage;
+                
+                // Get current speed and pitch from preferences
+                const speed = parseFloat(document.getElementById('voiceSpeed')?.value || 1.0);
+                const pitch = parseFloat(document.getElementById('voicePitch')?.value || 1.0);
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = currentLanguage; // Set to actual language first
+                utterance.rate = speed;
+                utterance.pitch = pitch;
+                utterance.volume = 1.0;
+
+                // Try to find a voice for the selected language
+                const voices = SpeechSynthesis.getVoices();
+                let voiceForLang = null;
+                let voiceSource = '';
+                
+                // For regional Indian languages, try multiple approaches
+                if (['ta-IN', 'te-IN', 'kn-IN', 'ml-IN'].includes(currentLanguage)) {
+                    // First: Try exact match
+                    voiceForLang = voices.find(v => v.lang === currentLanguage);
+                    if (voiceForLang) {
+                        voiceSource = 'exact match';
+                    }
+                    
+                    // Second: Try language fallback to Hindi for better results
+                    if (!voiceForLang) {
+                        voiceForLang = voices.find(v => v.lang === 'hi-IN');
+                        if (voiceForLang) {
+                            voiceSource = 'Hindi fallback (recommended for regional languages)';
+                            utterance.lang = 'hi-IN'; // Use Hindi for recognition too
+                        }
+                    }
+                    
+                    // Third: Try any Indian English voice
+                    if (!voiceForLang) {
+                        voiceForLang = voices.find(v => v.lang === 'en-IN');
+                        if (voiceForLang) {
+                            voiceSource = 'English (India) fallback';
+                            utterance.lang = 'en-IN';
+                        }
+                    }
+                } else {
+                    // For other languages, try exact match first
+                    voiceForLang = voices.find(v => v.lang === currentLanguage);
+                    if (voiceForLang) {
+                        voiceSource = 'exact match';
+                    }
+                }
+                
+                // If still not found, try partial match
+                if (!voiceForLang) {
+                    const langPrefix = currentLanguage.split('-')[0];
+                    voiceForLang = voices.find(v => v.lang.startsWith(langPrefix));
+                    if (voiceForLang) {
+                        voiceSource = 'partial language match';
+                    }
+                }
+                
+                // Last resort: use any English voice
+                if (!voiceForLang) {
+                    voiceForLang = voices.find(v => v.lang.startsWith('en'));
+                    if (voiceForLang) {
+                        voiceSource = 'English fallback';
+                        utterance.lang = 'en-US';
+                    }
+                }
+                
+                if (voiceForLang) {
+                    utterance.voice = voiceForLang;
+                    console.log(`Using voice (${voiceSource}):`, voiceForLang.name);
+                } else {
+                    console.warn(`No suitable voice found for ${currentLanguage}. Using system default.`);
+                }
+
+                utterance.onstart = () => {
+                    showResponse(text);
+                };
+
+                utterance.onend = () => {
+                    // speech ended
+                    setTimeout(() => {
+                        if (currentState !== STATE.IDLE && recognition) {
+                            try { recognition.start(); } catch(e) {}
+                        }
+                    }, 1000);
+                };
+
+                utterance.onerror = (event) => {
+                    // speech error: event.error
+                    console.error('Speech synthesis error:', event.error);
+                    // Retry if error is "not-allowed"
+                    if (event.error === 'not-allowed') {
+                        console.log('Retrying speech after not-allowed error...');
+                        setTimeout(() => {
+                            try {
+                                // Get current speed and pitch from preferences
+                                const speed = parseFloat(document.getElementById('voiceSpeed')?.value || 1.0);
+                                const pitch = parseFloat(document.getElementById('voicePitch')?.value || 1.0);
+                                
+                                const retryUtterance = new SpeechSynthesisUtterance(text);
+                                retryUtterance.lang = currentLanguage;
+                                retryUtterance.rate = speed;
+                                retryUtterance.pitch = pitch;
+                                retryUtterance.volume = 1.0;
+                                
+                                const voices = SpeechSynthesis.getVoices();
+                                let voiceForLang = voices.find(v => v.lang === currentLanguage);
+                                
+                                // Try Hindi fallback for regional languages
+                                if (!voiceForLang && ['ta-IN', 'te-IN', 'kn-IN', 'ml-IN'].includes(currentLanguage)) {
+                                    voiceForLang = voices.find(v => v.lang === 'hi-IN');
+                                    retryUtterance.lang = 'hi-IN';
+                                }
+                                
+                                if (!voiceForLang) {
+                                    voiceForLang = voices.find(v => v.lang.startsWith(currentLanguage.split('-')[0]));
+                                }
+                                if (!voiceForLang) {
+                                    voiceForLang = voices.find(v => v.lang.startsWith('en'));
+                                }
+                                if (voiceForLang) retryUtterance.voice = voiceForLang;
+                                // retry speaking with selected voice
+                                SpeechSynthesis.speak(retryUtterance);
+                            } catch(e) {
+                                console.error('Retry failed:', e);
+                            }
+                        }, 800);
+                    }
+                };
+
+                    try {
+                    SpeechSynthesis.speak(utterance);
+                } catch (e) {
+                    showResponse(text);
+                }
+            }, 150);
+        }
+
+        // Create/resume AudioContext so TTS won't be blocked; play queued speech after context ready
+        function autoEnableAudio() {
+            if (audioEnabled) return;
+            
+            // enabling audio context
+            try {
+                // Create audio context if doesn't exist
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    // audio context created
+                }
+                
+                // Resume if suspended and wait for it
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        audioEnabled = true;
+                        // Process pending speech after context is ready
+                        setTimeout(() => {
+                            while (pendingSpeech.length) {
+                                const txt = pendingSpeech.shift();
+                                try { speak(txt); } catch(e) {}
+                            }
+                        }, 100);
+                    }).catch((e) => {
+                        console.warn('Could not resume AudioContext:', e);
+                        audioEnabled = true;
+                    });
+                } else {
+                    // Context is already running
+                    audioEnabled = true;
+                    setTimeout(() => {
+                        while (pendingSpeech.length) {
+                            const txt = pendingSpeech.shift();
+                            try { speak(txt); } catch(e) {}
+                        }
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('Error enabling audio:', e);
+                audioEnabled = true;
+            }
+        }
+
+        // Audio feedback for wake word detection or command success using oscillator
+        function playChime(kind) {
+            if (!audioEnabled || !audioContext) return;
+            try {
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                o.connect(g); g.connect(audioContext.destination);
+                o.type = 'sine';
+                o.frequency.value = kind === 'wake' ? 880 : 440;
+                g.gain.setValueAtTime(0.0001, audioContext.currentTime);
+                g.gain.exponentialRampToValueAtTime(kind === 'wake' ? 0.2 : 0.18, audioContext.currentTime + 0.01);
+                o.start();
+                setTimeout(() => { try { o.stop(); } catch(e){} }, 140);
+            } catch (e) {}
+        }
+
+        // Return best recognition language with fallback chain (regional → en-IN → en-US)
+        function getOptimalRecognitionLanguage(targetLang) {
+            const REGIONAL_LANGUAGE_SUPPORT = {
+                'ta-IN': ['ta-IN', 'en-IN', 'en-US'],     // Tamil -> English India -> English US
+                'te-IN': ['te-IN', 'en-IN', 'en-US'],     // Telugu -> English India -> English US
+                'kn-IN': ['kn-IN', 'en-IN', 'en-US'],     // Kannada -> English India -> English US
+                'ml-IN': ['ml-IN', 'en-IN', 'en-US'],     // Malayalam -> English India -> English US
+                'hi-IN': ['hi-IN', 'en-IN', 'en-US'],     // Hindi -> English India -> English US
+                'en-IN': ['en-IN', 'en-US'],              // English India -> English US
+                'en-US': ['en-US', 'en-GB'],              // English US -> English GB
+                'es-ES': ['es-ES', 'es-MX', 'en-US'],     // Spanish variants
+                'fr-FR': ['fr-FR', 'fr-CA', 'en-US'],     // French variants
+                'de-DE': ['de-DE', 'en-US']               // German -> English US
+            };
+            
+            const supportedLangs = REGIONAL_LANGUAGE_SUPPORT[targetLang] || [targetLang, 'en-US'];
+            return supportedLangs[0];
+        }
+
+        // Function to check language support and show warnings
+        function checkLanguageSupport(lang) {
+            const regionalLangs = ['ta-IN', 'te-IN', 'kn-IN', 'ml-IN'];
+            if (regionalLangs.includes(lang)) {
+                console.warn(`⚠️ Language ${lang} may require Windows language pack installation`);
+                return false; // Not guaranteed to work
+            }
+            return true; // Likely supported
+        }
+
+        if (!SpeechRecognition) {
+            updateStatus('❌ Browser does not support voice');
+            document.getElementById('micButton').disabled = true;
+        } else {
+            // Main recognition instance: continuous, interim results, language set to current user preference
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';  // Always listen in English for command detection
+
+            // Recognition started: mark listening, add class to animate mic button
+            recognition.onstart = () => {
+                isListening = true;
+                document.getElementById('micButton').classList.add('listening');
+                checkLanguageSupport(currentLanguage);
+            };
+
+            // Process recognition results: extract transcript from last result; call handler on final transcripts
+            recognition.onresult = (event) => {
+                let transcript = '';
+                let isFinal = false;
+
+                for (let i = event.results.length - 1; i >= 0; i--) {
+                    if (event.results[i].length > 0) {
+                        transcript = event.results[i][0].transcript.trim();
+                        isFinal = event.results[i].isFinal;
+                        break;
+                    }
+                }
+
+                if (transcript) {
+                    showTranscription(transcript);
+                    if (isFinal) handleFinalTranscript(transcript.toLowerCase());
+                }
+            };
+
+            // Log recognition errors; hint user if regional language fails ('no-speech' often means pack not installed)
+            recognition.onerror = (event) => {
+                console.error('Recognition error:', event.error);
+                // Show helpful error message for regional languages
+                if (['ta-IN', 'te-IN', 'kn-IN', 'ml-IN'].includes(currentLanguage)) {
+                    if (event.error === 'no-speech') {
+                        console.warn(`Try speaking in ${LANGUAGE_NAMES[currentLanguage]?.en || 'selected language'} or switch to English`);
+                    }
+                }
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                document.getElementById('micButton').classList.remove('listening');
+            };
+
+            // Wake-word recognizer: separate instance running in IDLE state, listens for "aira" (case-insensitive)
+            wakeWordRecognition = new SpeechRecognition();
+            wakeWordRecognition.continuous = true;
+            wakeWordRecognition.interimResults = false;
+            wakeWordRecognition.lang = 'en-US';  // Always listen in English for wake word detection
+
+            // On wake word match: stop wake listener, play chime, greet, start main recognizer
+            wakeWordRecognition.onresult = (event) => {
+                // Check interim results too for faster wake-up (don't wait for final transcript)
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript || '';
+                    if (currentState === STATE.IDLE && isWakeWordMatch(transcript)) {
+                        setState(STATE.AWAKE);
+                        intentionallyStopped = true;
+                        wakeWordRecognition.stop();
+                        playChime('wake');
+                        autoEnableAudio();
+                        updateStatus('👋 ' + getTranslation('awake'));
+                        speak(getTranslation('how_can_i_help'));
+                        setState(STATE.LISTENING_FOR_COMMAND);
+                        
+                        setTimeout(() => {
+                            try { recognition.start(); } catch(e) {}
+                        }, 1000);
+                        return;  // Exit loop after wake word detected
+                    }
+                }
+            };
+
+            // Auto-restart wake word listener if it stops (unless intentionally stopped after wake word detected)
+            wakeWordRecognition.onend = () => {
+                if (!intentionallyStopped && currentState === STATE.IDLE) {
+                    try { wakeWordRecognition.start(); } catch(e) {}
+                } else if (intentionallyStopped) {
+                    intentionallyStopped = false;
+                }
+            };
+
+            try {
+                wakeWordRecognition.start();
+            } catch (err) {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                    stream.getTracks().forEach(t => t.stop());
+                    try { wakeWordRecognition.start(); } catch (e) {}
+                }).catch(e => console.warn('Mic denied'));
+            }
+
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    // Load available voices first
+                    if (SpeechSynthesis.onvoiceschanged === undefined) {
+                        SpeechSynthesis.onvoiceschanged = listAvailableVoices;
+                    }
+                    listAvailableVoices();
+                    
+                    // Add user gesture handler to enable audio on first interaction
+                    let audioInitialized = false;
+                    function onUserGesture() {
+                        if (!audioInitialized) {
+                            audioInitialized = true;
+                            autoEnableAudio();
+                            // Remove listeners after first interaction
+                            document.removeEventListener('click', onUserGesture);
+                            document.removeEventListener('touchstart', onUserGesture);
+                            document.removeEventListener('keydown', onUserGesture);
+                        }
+                    }
+                    document.addEventListener('click', onUserGesture);
+                    document.addEventListener('touchstart', onUserGesture);
+                    document.addEventListener('keydown', onUserGesture);
+                    
+                    // Check if user is already logged in (WITHOUT audio/speech on page load)
+                    checkAuthStatus();
+
+                    // If we arrived here via OAuth redirect, force a second auth check
+                    try {
+                        const params = new URLSearchParams(window.location.search);
+                        if (params.has('oauth')) {
+                            console.log('OAuth redirect detected, params:', Object.fromEntries(params));
+                            // Give the browser a moment to settle cookies, then re-check
+                            setTimeout(() => {
+                                checkAuthStatus();
+                                // remove oauth params from URL after check
+                                const newUrl = window.location.pathname;
+                                history.replaceState({}, document.title, newUrl);
+                            }, 800);
+                        }
+                    } catch (e) { console.error('OAuth param handling error', e); }
+                }, 500);
+            });
+        }
+
+        // Parse user command from transcript; supports multi-language keywords (EN, Hindi, Tamil, etc.) for login/register/logout
+        function detectCommand(text) {
+            const lower = text.toLowerCase();
+            const original = text;  // Keep original text for non-Latin scripts
+            
+            // Multi-language command keywords
+            const commands = {
+                'face_login': {
+                    'en-US': ['face login', 'login with face', 'face recognition', 'face authentication', 'login using face', 'face id'],
+                    'en-IN': ['face login', 'login with face', 'face recognition', 'face authentication', 'login using face', 'face id'],
+                    'hi-IN': ['फेस लॉगिन', 'चेहरे से लॉगिन', 'फेस रिकग्निशन'],
+                    'ta-IN': ['முக அடையாளம்', 'முகம் மூலம் உள்நுழை', 'முக அங்கீகாரம்'],
+                    'te-IN': ['ఫేస్ లాగిన్', 'ముఖం ద్వారా లాగిన్', 'ముఖ గుర్తింపు'],
+                    'kn-IN': ['ಮುಖ ಲಾಗಿನ್', 'ಮುಖದ ಮೂಲಕ ಲಾಗಿನ್', 'ಮುಖ ಗುರುತಿಸುವಿಕೆ'],
+                    'ml-IN': ['മുഖം കൊണ്ട് ലോഗിൻ', 'മുഖ തിരിച്ചറിയൽ', 'ഫേസ് ലോഗിൻ'],
+                    'es-ES': ['login facial', 'reconocimiento facial', 'autenticación facial'],
+                    'fr-FR': ['connexion faciale', 'reconnaissance faciale', 'authentification faciale'],
+                    'de-DE': ['gesichtserkennung', 'gesichts login', 'gesichtsauthentifizierung']
+                },
+                'google_login': {
+                    'en-US': ['google', 'login with google', 'sign in with google', 'continue with google'],
+                    'en-IN': ['google', 'login with google', 'sign in with google', 'continue with google'],
+                    'hi-IN': ['गूगल', 'गूगल से', 'गूगल से लॉगिन'],
+                    'ta-IN': ['கூகிள்', 'கூகிள் மூலம்', 'கூகிள் வழியாக உள்நுழைக'],
+                    'te-IN': ['గూగిల్', 'గూగిల్ నుండి', 'గూగిల్ ద్వారా లాగిన్'],
+                    'kn-IN': ['ಗೂಗಲ್', 'ಗೂಗಲ್ ನಿಂದ', 'ಗೂಗಲ್ ಮೂಲಕ ಲಾಗಿನ್'],
+                    'ml-IN': ['ഗൂഗിള്', 'ഗൂഗിളില്നിന്ന്', 'ഗൂഗിള് മൂലം ലോഗിൻ'],
+                    'es-ES': ['google', 'login con google', 'iniciar con google'],
+                    'fr-FR': ['google', 'connexion google', 'se connecter avec google'],
+                    'de-DE': ['google', 'google anmelden', 'mit google anmelden']
+                },
+                'login': {
+                    'en-US': ['login', 'sign in', 'log in'],
+                    'en-IN': ['login', 'sign in', 'log in'],
+                    'hi-IN': ['लॉगिन', 'लॉग इन', 'साइन इन'],
+                    'ta-IN': ['உள்நுழைக', 'சைன் இன்', 'லாகின்'],
+                    'te-IN': ['లాగిన్', 'సైన్ ఇన్', 'లాగిన్ చేయండి'],
+                    'kn-IN': ['ಲಾಗಿನ್', 'ಸೈನ್ ಇನ್', 'ಲಾಗಿನ್ ಮಾಡಿ'],
+                    'ml-IN': ['ലോഗിൻ', 'സൈൻ ഇൻ', 'ലോഗിൻ ചെയ്യുക'],
+                    'es-ES': ['login', 'iniciar', 'entrar'],
+                    'fr-FR': ['connexion', 'se connecter', 'login'],
+                    'de-DE': ['anmelden', 'login', 'anmeldung']
+                },
+                'register': {
+                    'en-US': ['register', 'sign up', 'signup'],
+                    'en-IN': ['register', 'sign up', 'signup'],
+                    'hi-IN': ['रजिस्ट्रेशन', 'पंजीकरण', 'साइन अप'],
+                    'ta-IN': ['பதிவு', 'பதிவுசெய்க', 'சைன் அப்'],
+                    'te-IN': ['నమోదు', 'రిజిస్టర్', 'సైన్ అప్'],
+                    'kn-IN': ['ನೋಂದಣಿ', 'ನೋಂದಾಯಿಸಿ', 'ಸೈನ್ ಅಪ್'],
+                    'ml-IN': ['രജിസ്ട്രേഷൻ', 'രജിസ്ടർ', 'സൈൻ അപ്'],
+                    'es-ES': ['registro', 'registrarse', 'crear cuenta'],
+                    'fr-FR': ['inscription', 'sinscrire', 'créer compte'],
+                    'de-DE': ['registrierung', 'registrieren', 'anmeldung']
+                }
+            };
+            
+            // Use English commands as fallback for non-English languages
+            // (speech recognition returns English text regardless of UI language)
+            const isNonEnglishLanguage = !['en-US', 'en-IN'].includes(currentLanguage);
+            const detectionLanguage = isNonEnglishLanguage ? 'en-US' : currentLanguage;
+            
+            // Helper function to check if text contains any of the keywords
+            function findCommand(commandList, textToSearch, originalText) {
+                for (const word of commandList) {
+                    // Try lowercase match for Latin scripts
+                    if (textToSearch.includes(word.toLowerCase())) return true;
+                    // Try exact match for non-Latin scripts (case-sensitive)
+                    if (originalText.includes(word)) return true;
+                }
+                return false;
+            }
+            
+            // IMPORTANT: Check more specific commands FIRST before general ones
+            // Check for face login FIRST (before checking for regular login)
+            const faceLoginWords = commands.face_login[detectionLanguage] || commands.face_login['en-US'];
+            if (findCommand(faceLoginWords, lower, original)) {
+                console.log('🎯 Detected: face_login from text:', text);
+                return 'face_login';
+            }
+            
+            // Check for google login (must check before regular login as it's more specific)
+            const googleLoginWords = commands.google_login[detectionLanguage] || commands.google_login['en-US'];
+            let hasGoogle = false, hasLogin = false;
+            if (findCommand(googleLoginWords, lower, original)) {
+                hasGoogle = true;
+            }
+            
+            if (hasGoogle) {
+                const loginWords = commands.login[detectionLanguage] || commands.login['en-US'];
+                if (findCommand(loginWords, lower, original)) {
+                    hasLogin = true;
+                }
+                if (hasLogin) {
+                    console.log('🎯 Detected: google_login from text:', text);
+                    return 'google_login';
+                }
+            }
+            
+            // Check for regular login (checked after face_login and google_login)
+            const loginWords = commands.login[detectionLanguage] || commands.login['en-US'];
+            if (findCommand(loginWords, lower, original)) {
+                console.log('🎯 Detected: login from text:', text);
+                return 'login';
+            }
+            
+            // Check for register
+            const registerWords = commands.register[detectionLanguage] || commands.register['en-US'];
+            if (findCommand(registerWords, lower, original)) return 'register';
+
+            // Check for logout
+            const logoutWords = ['logout', 'log out', 'sign out', 'signoff', 'sign off', 'log off'];
+            for (const w of logoutWords) {
+                if (lower.includes(w)) return 'logout';
+            }
+
+            // Check for change language commands like "change language to Spanish" or "set language to hindi"
+            const changeLangPatterns = ['change language to', 'set language to', 'language to', 'switch language to', 'change to'];
+            for (const p of changeLangPatterns) {
+                if (lower.includes(p)) {
+                    // extract the part after the pattern
+                    const parts = lower.split(p);
+                    if (parts.length > 1) {
+                        let langPart = parts[1].trim();
+                        // remove filler words
+                        langPart = langPart.replace(/^the /, '').replace(/ please$/, '').trim();
+
+                        // Map spoken language names to language codes
+                        const langMap = {
+                            // English variants
+                            'english': 'en-US', 'english us': 'en-US', 'us english': 'en-US', 'english (us)': 'en-US', 'en': 'en-US', 'en-us': 'en-US', 'en us': 'en-US',
+                            'english india': 'en-IN', 'en-in': 'en-IN', 'english (india)': 'en-IN', 'en-in': 'en-IN',
+
+                            // Hindi
+                            'hindi': 'hi-IN', 'हिंदी': 'hi-IN', 'hi': 'hi-IN', 'hi-in': 'hi-IN',
+
+                            // Regional Indian languages (names + native scripts)
+                            'tamil': 'ta-IN', 'தமிழ்': 'ta-IN', 'ta': 'ta-IN', 'ta-in': 'ta-IN',
+                            'telugu': 'te-IN', 'తెలుగు': 'te-IN', 'te': 'te-IN', 'te-in': 'te-IN',
+                            'kannada': 'kn-IN', 'ಕನ್ನಡ': 'kn-IN', 'kn': 'kn-IN', 'kn-in': 'kn-IN',
+                            'malayalam': 'ml-IN', 'മലയാളം': 'ml-IN', 'ml': 'ml-IN', 'ml-in': 'ml-IN',
+
+                            // Spanish variants
+                            'spanish': 'es-ES', 'español': 'es-ES', 'es': 'es-ES', 'es-es': 'es-ES', 'castellano': 'es-ES', 'spanish (spain)': 'es-ES', 'es-mx': 'es-ES',
+
+                            // French variants
+                            'french': 'fr-FR', 'français': 'fr-FR', 'fr': 'fr-FR', 'fr-fr': 'fr-FR', 'fr-ca': 'fr-FR',
+
+                            // German variants
+                            'german': 'de-DE', 'deutsch': 'de-DE', 'de': 'de-DE', 'de-de': 'de-DE',
+
+                            // Short codes as fallback
+                            'hi-in': 'hi-IN', 'ta-in': 'ta-IN', 'te-in': 'te-IN', 'kn-in': 'kn-IN', 'ml-in': 'ml-IN'
+                        };
+
+                        // direct code entered by user
+                        if (langMap[langPart]) return { command: 'change_language', value: langMap[langPart] };
+                        // try to match first word only (e.g., "spanish" or "english")
+                        const firstWord = langPart.split(/\s+/)[0];
+                        if (langMap[firstWord]) return { command: 'change_language', value: langMap[firstWord] };
+
+                        // fallback: if user said a language code like en-IN
+                        const codeMatch = langPart.match(/([a-z]{2}(-| )[A-Z]{2})|([a-z]{2}-[A-Z]{2})/i);
+                        if (codeMatch) {
+                            let code = codeMatch[0].replace(' ', '-');
+                            return { command: 'change_language', value: code };
+                        }
+                    }
+                }
+            }
+
+            // Check for explicit voice speed value commands (e.g., "change speed to 1.5")
+            const setSpeedPatterns = ['set speed to', 'change speed to', 'set voice speed to', 'change voice speed to', 'speed to'];
+            for (const p of setSpeedPatterns) {
+                if (lower.includes(p)) {
+                    const parts = lower.split(p);
+                    if (parts.length > 1) {
+                        let speedPart = parts[1].trim();
+                        // Extract numeric value (handles "1.5", "one point five", "one and a half", etc.)
+                        const numberMatch = speedPart.match(/(\d+\.?\d*)/);
+                        if (numberMatch) {
+                            let speedValue = parseFloat(numberMatch[1]);
+                            // Clamp to valid range
+                            speedValue = Math.max(0.5, Math.min(2, speedValue));
+                            return { command: 'adjust_voice_speed', value: speedValue };
+                        }
+                    }
+                }
+            }
+
+            // Check for voice speed commands (increase/decrease/speed up/slow down)
+            const speedUpPatterns = ['speed up', 'faster', 'increase speed', 'increase voice speed'];
+            for (const p of speedUpPatterns) {
+                if (lower.includes(p)) {
+                    const currentSpeed = parseFloat(document.getElementById('voiceSpeed')?.value || 1.0);
+                    const newSpeed = Math.min(2, currentSpeed + 0.1);
+                    return { command: 'adjust_voice_speed', value: newSpeed };
+                }
+            }
+
+            const slowDownPatterns = ['slow down', 'slower', 'decrease speed', 'decrease voice speed'];
+            for (const p of slowDownPatterns) {
+                if (lower.includes(p)) {
+                    const currentSpeed = parseFloat(document.getElementById('voiceSpeed')?.value || 1.0);
+                    const newSpeed = Math.max(0.5, currentSpeed - 0.1);
+                    return { command: 'adjust_voice_speed', value: newSpeed };
+                }
+            }
+
+            // Check for explicit voice pitch value commands (e.g., "change pitch to 1.5")
+            const setPitchPatterns = ['set pitch to', 'change pitch to', 'set voice pitch to', 'change voice pitch to', 'pitch to'];
+            for (const p of setPitchPatterns) {
+                if (lower.includes(p)) {
+                    const parts = lower.split(p);
+                    if (parts.length > 1) {
+                        let pitchPart = parts[1].trim();
+                        // Extract numeric value
+                        const numberMatch = pitchPart.match(/(\d+\.?\d*)/);
+                        if (numberMatch) {
+                            let pitchValue = parseFloat(numberMatch[1]);
+                            // Clamp to valid range
+                            pitchValue = Math.max(0.5, Math.min(2, pitchValue));
+                            return { command: 'adjust_voice_pitch', value: pitchValue };
+                        }
+                    }
+                }
+            }
+
+            // Check for voice pitch commands (increase/decrease/higher/lower)
+            const pitchUpPatterns = ['increase pitch', 'higher pitch', 'pitch up', 'higher voice'];
+            for (const p of pitchUpPatterns) {
+                if (lower.includes(p)) {
+                    const currentPitch = parseFloat(document.getElementById('voicePitch')?.value || 1.0);
+                    const newPitch = Math.min(2, currentPitch + 0.1);
+                    return { command: 'adjust_voice_pitch', value: newPitch };
+                }
+            }
+
+            const pitchDownPatterns = ['decrease pitch', 'lower pitch', 'pitch down', 'lower voice'];
+            for (const p of pitchDownPatterns) {
+                if (lower.includes(p)) {
+                    const currentPitch = parseFloat(document.getElementById('voicePitch')?.value || 1.0);
+                    const newPitch = Math.max(0.5, currentPitch - 0.1);
+                    return { command: 'adjust_voice_pitch', value: newPitch };
+                }
+            }
+            
+            return null;
+        }
+        
+
+        // State machine router: processes final transcript based on current state; branches on commands or collects input (email/password/name)
+        function handleFinalTranscript(lower) {
+            switch(currentState) {
+                case STATE.LOGGED_IN:
+                    // When logged in, allow logout and language change commands
+                    const loggedInCommand = detectCommand(lower);
+                    if (loggedInCommand && typeof loggedInCommand === 'object') {
+                        if (loggedInCommand.command === 'change_language') {
+                            try { recognition.stop(); } catch(e) {}
+                            const langCode = loggedInCommand.value;
+                            const langName = LANGUAGE_NAMES[langCode]?.native || langCode;
+                            speak(getTranslation('language_changed') + ' ' + langName);
+                            updatePreference('language', langCode);
+                            // Restart listening after language change
+                            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 600);
+                            break;
+                        }
+                        if (loggedInCommand.command === 'adjust_voice_speed') {
+                            const newSpeed = loggedInCommand.value;
+                            document.getElementById('voiceSpeed').value = newSpeed;
+                            updatePreference('voice_speed', newSpeed);
+                            // Restart listening after speed adjustment
+                            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 600);
+                            break;
+                        }
+                        if (loggedInCommand.command === 'adjust_voice_pitch') {
+                            const newPitch = loggedInCommand.value;
+                            document.getElementById('voicePitch').value = newPitch;
+                            updatePreference('voice_pitch', newPitch);
+                            // Restart listening after pitch adjustment
+                            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 600);
+                            break;
+                        }
+                    }
+                    if (loggedInCommand === 'logout') {
+                        try { recognition.stop(); } catch(e) {}
+                        speak(getTranslation('logged_out'));
+                        setTimeout(() => logout(), 600);
+                        break;
+                    }
+                    // If no logout/language command, ignore and keep listening
+                    break;
+
+                case STATE.LISTENING_FOR_COMMAND:
+                    // After wake word: detect login/register/logout/lang-change; start respective flow or re-prompt
+                    const command = detectCommand(lower);
+                    // handle language change (object) and logout
+                    if (command && typeof command === 'object') {
+                        if (command.command === 'change_language') {
+                            try { recognition.stop(); } catch(e) {}
+                            const langCode = command.value;
+                            const langName = LANGUAGE_NAMES[langCode]?.native || langCode;
+                            speak(getTranslation('language_changed') + ' ' + langName);
+                            updatePreference('language', langCode);
+                            break;
+                        }
+                        if (command.command === 'adjust_voice_speed') {
+                            const newSpeed = command.value;
+                            document.getElementById('voiceSpeed').value = newSpeed;
+                            updatePreference('voice_speed', newSpeed);
+                            break;
+                        }
+                        if (command.command === 'adjust_voice_pitch') {
+                            const newPitch = command.value;
+                            document.getElementById('voicePitch').value = newPitch;
+                            updatePreference('voice_pitch', newPitch);
+                            break;
+                        }
+                    }
+                    if (command === 'logout') {
+                        try { recognition.stop(); } catch(e) {}
+                        speak(getTranslation('logged_out'));
+                        setTimeout(() => logout(), 600);
+                        break;
+                    }
+
+                    if (command === 'face_login') {
+                        console.log('✅ Face login command detected!');
+                        try { recognition.stop(); } catch(e) {}
+                        startFaceOnlyLoginFlow();
+                    } else if (command === 'google_login') {
+                        console.log('✅ Google login command detected!');
+                        try { recognition.stop(); } catch(e) {}
+                        speak(getTranslation('greeting'));
+                        setTimeout(() => loginWithGoogle(), 500);
+                    } else if (command === 'login') {
+                        console.log('✅ Regular login command detected!');
+                        try { recognition.stop(); } catch(e) {}
+                        startLoginFlow();
+                    } else if (command === 'register') {
+                        console.log('✅ Register command detected!');
+                        try { recognition.stop(); } catch(e) {}
+                        startRegisterFlow();
+                    } else {
+                        // Command not recognized, ask user to repeat and listen again
+                        console.log('❌ Command not recognized:', command);
+                        speak(getTranslation('say_command'));
+                        try { recognition.stop(); } catch(e) {}
+                        setTimeout(() => { try { recognition.start(); } catch(e) {} }, 600);
+                    }
+                    break;
+
+                case STATE.WAITING_EMAIL:
+                    // Collect email from transcript; move to password prompt
+                    document.getElementById('loginEmail').value = lower;
+                    speak(getTranslation('password_prompt'));
+                    setState(STATE.WAITING_PASSWORD);
+                    try { recognition.stop(); } catch(e) {}
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                    break;
+
+                case STATE.WAITING_PASSWORD:
+                    // Collect password from transcript; attempt login (may trigger face verification)
+                    document.getElementById('loginPassword').value = lower;
+                    try { recognition.stop(); } catch(e) {}
+                    speak(getTranslation('login_success'));
+                    setTimeout(() => submitLogin(), 500);
+                    break;
+
+                case STATE.WAITING_NAME:
+                    // Collect name from transcript for registration; move to email prompt
+                    document.getElementById('regName').value = lower;
+                    speak(getTranslation('email_prompt'));
+                    setState(STATE.WAITING_REG_EMAIL);
+                    try { recognition.stop(); } catch(e) {}
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                    break;
+
+                case STATE.WAITING_REG_EMAIL:
+                    // Collect registration email from transcript; move to password prompt
+                    document.getElementById('regEmail').value = lower;
+                    speak(getTranslation('password_prompt'));
+                    setState(STATE.WAITING_REG_PASSWORD);
+                    try { recognition.stop(); } catch(e) {}
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                    break;
+
+                case STATE.WAITING_REG_PASSWORD:
+                    // Collect registration password; move to face capture phase (mandatory for registration)
+                    document.getElementById('regPassword').value = lower;
+                    try { recognition.stop(); } catch(e) {}
+                    
+                    // Move to face capture phase
+                    speak('Now, please position your face in front of the camera for biometric registration.');
+                    setState(STATE.WAITING_FACE_CAPTURE);
+                    
+                    // Start face capture after brief delay
+                    setTimeout(() => {
+                        startFaceCapture();
+                    }, 1500);
+                    break;
+            }
+        }
+
+        function startLoginFlow() {
+            hideAll();
+            document.getElementById('loginSection').classList.remove('hidden');
+            speak(getTranslation('email_prompt'));
+            setState(STATE.WAITING_EMAIL);
+            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+        }
+
+        function startFaceOnlyLoginFlow() {
+            console.log('🔵 startFaceOnlyLoginFlow() called - initiating face-only login');
+            hideAll();
+            document.getElementById('loginSection').classList.remove('hidden');
+            speak('Please look at the camera for face recognition login');
+            updateStatus('Starting face recognition login...');
+            setState(STATE.IDLE); // Set to IDLE so voice doesn't interfere
+            
+            // Start face capture after brief delay
+            setTimeout(() => {
+                console.log('🔵 Starting face capture...');
+                startFaceOnlyLogin();
+            }, 1000);
+        }
+
+        function startRegisterFlow() {
+            hideAll();
+            document.getElementById('registerSection').classList.remove('hidden');
+            
+            // Reset face capture
+            capturedFaceImage = null;
+            const startBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureFaceBtn');
+            const retakeBtn = document.getElementById('retakeFaceBtn');
+            const msg = document.getElementById('faceStatusMsg');
+            startBtn.style.display = 'inline-block';
+            captureBtn.style.display = 'none';
+            retakeBtn.style.display = 'none';
+            msg.style.display = 'none';
+            
+            speak(getTranslation('name_prompt'));
+            setState(STATE.WAITING_NAME);
+            setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+        }
+
+        function cancelAuth() {
+            hideAll();
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            speak(getTranslation('cancelled'));
+            updateStatus(getTranslation('wake_prompt'));
+            setState(STATE.IDLE);
+            try { recognition.stop(); } catch(e) {}
+            try { wakeWordRecognition.start(); } catch(e) {}
+        }
+
+        function loginWithGoogle() {
+            window.location.href = '/auth/google';
+        }
+
+        // Fetch auth status/profile then reveal dashboard
+        async function showDashboard() {
+            try {
+                console.log('Loading dashboard...');
+                // First, check auth status to get user info
+                const authRes = await fetch('/api/auth/status', { credentials: 'same-origin' });
+                const authData = await authRes.json();
+
+                if (!authRes.ok || !authData.authenticated || !authData.user) {
+                    console.error('Not authenticated or failed to fetch user status', authData);
+                    showError('Not authenticated');
+                    return;
+                }
+
+                // Then fetch the profile
+                const profRes = await fetch('/api/profile', { credentials: 'same-origin' });
+                const profileData = await profRes.json();
+
+                console.log('User response:', authData, 'Profile response:', profileData);
+
+                if (profRes.ok && authData.user) {
+                    // Hide auth sections
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('registerSection').classList.add('hidden');
+                    document.getElementById('transcription').classList.add('hidden');
+                    document.getElementById('responseBox').classList.add('hidden');
+                    document.getElementById('errorBox').classList.add('hidden');
+                    document.getElementById('statusText').parentElement.style.display = 'none';
+                    document.getElementById('micButton').style.display = 'none';
+
+                    // Show dashboard
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+
+                    // Fill in user info
+                    const user = authData.user;
+                    const profile = profileData || {};
+                    
+                    document.getElementById('userName').textContent = user.name || 'User';
+                    document.getElementById('userEmail').textContent = user.email || '-';
+                    document.getElementById('userFullName').textContent = user.name || '-';
+                    document.getElementById('userCreated').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
+
+                    // Load preferences
+                    if (profile.voice_speed) document.getElementById('voiceSpeed').value = profile.voice_speed;
+                    if (profile.voice_pitch) document.getElementById('voicePitch').value = profile.voice_pitch;
+                    if (profile.language) {
+                        document.getElementById('language').value = profile.language;
+                        currentLanguage = profile.language;  // Set current language
+                        if (recognition) recognition.lang = currentLanguage;
+                    }
+                    
+                    updateVoiceDisplay();
+                    
+                    const welcomeMsg = getTranslation('welcome_back') + ', ' + (user.name || 'User') + '!';
+                    speak(welcomeMsg);
+                    updateStatus(getTranslation('dashboard_loaded'));
+                    setState(STATE.LOGGED_IN);
+                    console.log('Dashboard displayed successfully');
+                } else {
+                    console.error('Profile response error:', data);
+                    showError('Failed to load profile');
+                    speak('Failed to load profile');
+                }
+            } catch (err) {
+                console.error('Error loading profile:', err);
+                showError('Error loading profile: ' + err.message);
+                speak(getTranslation('login_failed'));
+            }
+        }
+
+        // Persist voice/preferences to backend; hot-apply language to recognizers
+        async function updatePreference(key, value) {
+            console.log(`Updating ${key} to ${value}`);
+            
+            // Update language in real-time (recognition + wake word)
+            if (key === 'language') {
+                currentLanguage = value;
+                checkLanguageSupport(value);
+                console.log('Language changed to:', currentLanguage);
+                
+                // Update all UI text to the new language
+                updateUILanguage(currentLanguage);
+                
+                // Get optimal recognition language with fallback
+                const optimalLang = getOptimalRecognitionLanguage(currentLanguage);
+                console.log('Using optimal recognition language:', optimalLang);
+                
+                // Update both recognition and wake word recognizer language
+                if (recognition) {
+                    try { 
+                        recognition.lang = optimalLang;
+                        if (isListening) {
+                            recognition.stop();
+                            setTimeout(() => recognition.start(), 500);
+                        }
+                    } catch(e) { console.error('Error updating recognition language:', e); }
+                }
+                // Also update wake word recognizer language
+                if (wakeWordRecognition) {
+                    try {
+                        wakeWordRecognition.lang = optimalLang;
+                        console.log('Wake word recognizer language updated to:', optimalLang);
+                        // Restart wake word recognizer to apply language change
+                        wakeWordRecognition.stop();
+                        setTimeout(() => wakeWordRecognition.start(), 300);
+                    } catch(e) { console.error('Error updating wake word language:', e); }
+                }
+            }
+            
+            // Update display
+            if (key === 'voice_speed') {
+                document.getElementById('voiceSpeedValue').textContent = parseFloat(value).toFixed(1) + 'x';
+            } else if (key === 'voice_pitch') {
+                document.getElementById('voicePitchValue').textContent = parseFloat(value).toFixed(1) + 'x';
+            }
+
+            try {
+                const res = await fetch('/api/profile', {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [key]: value })
+                });
+
+                if (res.ok) {
+                    showResponse('Preference saved!');
+                    // Create message in the selected language
+                    let updateMessage = '';
+                    if (key === 'language') {
+                        const langName = LANGUAGE_NAMES[value]?.native || value;
+                        updateMessage = getTranslation('language_changed') + ' ' + langName;
+                    } else if (key === 'voice_speed') {
+                        // Create speed change message
+                        const speedValue = parseFloat(value).toFixed(1);
+                        const speedMessages = {
+                            'hi-IN': `वॉयस स्पीड ${speedValue} गुना पर अपडेट किया गया।`,
+                            'ta-IN': `குரல் வேகம் ${speedValue} மடங்குக்கு புதுப்பிக்கப்பட்டது।`,
+                            'te-IN': `వాయిస్ స్పీడ్ ${speedValue} రెట్టకు అప్‌డేట్ చేయబడింది।`,
+                            'kn-IN': `ವಾಯ್ಸ್ ಸ್ಪೀಡ್ ${speedValue} ಬಾರಿಗೆ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ।`,
+                            'ml-IN': `ഭാഷയുടെ വേഗത ${speedValue} ആയി അപ്‌ഡേറ്റ് ചെയ്‌തു.`,
+                            'en-US': `Voice speed updated to ${speedValue} times.`,
+                            'en-IN': `Voice speed updated to ${speedValue} times.`
+                        };
+                        updateMessage = speedMessages[currentLanguage] || `Voice speed updated to ${speedValue}x`;
+                    } else if (key === 'voice_pitch') {
+                        // Create pitch change message
+                        const pitchValue = parseFloat(value).toFixed(1);
+                        const pitchMessages = {
+                            'hi-IN': `वॉयस पिच ${pitchValue} गुना पर अपडेट किया गया।`,
+                            'ta-IN': `குரல் பிச் ${pitchValue} மடங்குக்கு புதுப்பிக்கப்பட்டது।`,
+                            'te-IN': `వాయిస్ పిచ్ ${pitchValue} రెట్టకు అప్‌డేట్ చేయబడింది।`,
+                            'kn-IN': `ವಾಯ್ಸ್ ಪಿಚ್ ${pitchValue} ಬಾರಿಗೆ ಅಪ್‌ಡೇಟ್ ಮಾಡಲಾಗಿದೆ।`,
+                            'ml-IN': `ഭാഷയുടെ പിച് ${pitchValue} ആയി അപ്‌ഡേറ്റ് ചെയ്‌തു.`,
+                            'en-US': `Voice pitch updated to ${pitchValue} times.`,
+                            'en-IN': `Voice pitch updated to ${pitchValue} times.`
+                        };
+                        updateMessage = pitchMessages[currentLanguage] || `Voice pitch updated to ${pitchValue}x`;
+                    }
+                    
+                    // Ensure audio is enabled before speaking
+                    if (!audioEnabled) {
+                        autoEnableAudio();
+                    }
+                    
+                    // Add small delay to ensure currentLanguage is set before speaking
+                    setTimeout(() => {
+                        // speak update message with updated speed and pitch
+                        speak(updateMessage);
+                    }, 200);
+                } else {
+                    showError('Failed to save preference');
+                }
+            } catch (err) {
+                console.error('Error updating preference:', err);
+                showError('Error saving preference');
+            }
+        }
+
+        function updateVoiceDisplay() {
+            const speed = document.getElementById('voiceSpeed').value;
+            const pitch = document.getElementById('voicePitch').value;
+            document.getElementById('voiceSpeedValue').textContent = parseFloat(speed).toFixed(1) + 'x';
+            document.getElementById('voicePitchValue').textContent = parseFloat(pitch).toFixed(1) + 'x';
+        }
+
+        function testVoice() {
+            const speed = document.getElementById('voiceSpeed').value;
+            const pitch = document.getElementById('voicePitch').value;
+            
+            // Quick audible check of current TTS settings
+            const utterance = new SpeechSynthesisUtterance('Testing voice with current settings');
+            utterance.lang = currentLanguage;
+            utterance.rate = parseFloat(speed);
+            utterance.pitch = parseFloat(pitch);
+            
+            // Try to find best-fit voice for language
+            const voices = SpeechSynthesis.getVoices();
+            const voiceForLang = voices.find(v => v.lang.startsWith(currentLanguage.split('-')[0]));
+            if (voiceForLang) {
+                utterance.voice = voiceForLang;
+            }
+            
+            SpeechSynthesis.speak(utterance);
+        }
+
+        // Diagnostics for available TTS voices; useful when users lack local packs
+        function listAvailableVoices() {
+            const voices = SpeechSynthesis.getVoices();
+            
+            // Group voices by language
+            const voicesByLang = {};
+            voices.forEach(voice => {
+                if (!voicesByLang[voice.lang]) {
+                    voicesByLang[voice.lang] = [];
+                }
+                voicesByLang[voice.lang].push(voice.name);
+            });
+            
+            // Log diagnostic information
+            console.log('=== Available Voices Diagnostic ===');
+            console.log(`Total voices: ${voices.length}`);
+            
+            // Check for critical languages
+            const criticalLangs = ['en-US', 'en-IN', 'hi-IN', 'ta-IN', 'te-IN', 'kn-IN', 'ml-IN'];
+            criticalLangs.forEach(lang => {
+                const available = voicesByLang[lang] ? voicesByLang[lang].length > 0 : false;
+                const status = available ? '✓' : '✗';
+                console.log(`${status} ${lang}: ${available ? voicesByLang[lang].join(', ') : 'NOT AVAILABLE'}`);
+            });
+            
+            console.log('=== Regional Language Setup ===');
+            const regionalLangs = ['ta-IN', 'te-IN', 'kn-IN', 'ml-IN'];
+            regionalLangs.forEach(lang => {
+                const langName = LANGUAGE_NAMES[lang]?.en || lang;
+                if (!voicesByLang[lang]) {
+                    console.warn(`⚠️ ${langName} (${lang}): Not installed. Install Windows Language Pack for best support.`);
+                    console.log(`   Fallback: Using Hindi (hi-IN) or English (en-IN) for TTS`);
+                    console.log(`   Recognition: Will use English variant as fallback`);
+                } else {
+                    console.log(`✓ ${langName} (${lang}): Voice pack installed`);
+                }
+            });
+            
+            return voices;
+        }
+
+
+        // Clear session on server and reset UI/recognizers
+        async function logout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+                
+                // Clear all UI elements
+                hideAll();
+                document.getElementById('dashboardSection').classList.add('hidden');
+                document.getElementById('statusText').style.display = 'block';
+                document.getElementById('micButton').style.display = 'block';
+                
+                // Clear pending speech queue
+                pendingSpeech = [];
+                
+                // Reset language to English for wake word detection (most reliable)
+                currentLanguage = 'en-US';
+                
+                speak(getTranslation('logged_out'));
+                updateStatus(getTranslation('wake_prompt'));
+                setState(STATE.IDLE);
+                
+                // Restart wake word recognizer with English for reliability
+                try {
+                    wakeWordRecognition.lang = 'en-US';
+                    wakeWordRecognition.stop();
+                    setTimeout(() => {
+                        try { wakeWordRecognition.start(); } catch(e) { console.error('Error restarting wake word recognizer:', e); }
+                    }, 500);
+                } catch(e) { console.error('Logout error restarting recognizer:', e); }
+            } catch (err) {
+                console.error('Logout error:', err);
+                showError('Logout failed');
+            }
+        }
+
+        // On page load: check session and prefill dashboard/state
+        async function checkAuthStatus() {
+            try {
+                console.log('🔍 Checking auth status...');
+                // First check if there's a pending OAuth login
+                const oauthRes = await fetch('/api/auth/oauth-pending-status', { credentials: 'same-origin' });
+                console.log('OAuth pending status response:', oauthRes.status);
+                
+                if (oauthRes.ok) {
+                    const oauthData = await oauthRes.json();
+                    console.log('OAuth pending data:', oauthData);
+                    
+                    if (oauthData.pending) {
+                        console.log('✅ OAuth pending login detected');
+                        // OAuth login is pending face verification/registration
+                        hideAll();
+                        document.getElementById('loginSection').classList.remove('hidden');
+                        
+                        const userName = oauthData.user?.name || 'User';
+                        
+                        if (oauthData.requires_face_registration) {
+                            console.log('📸 OAuth requires face REGISTRATION');
+                            updateStatus('Please register your face to complete Google login');
+                            speak(`Welcome ${userName}! Please capture your face to complete your account setup`);
+                            
+                            // Show message and start face capture for registration
+                            const msg = document.getElementById('faceOnlyStatusMsg');
+                            msg.textContent = `Welcome! Please capture your face to complete Google login for ${oauthData.user?.email}`;
+                            msg.style.display = 'block';
+                            msg.style.background = 'rgba(255,255,255,0.2)';
+                            msg.style.color = 'white';
+                            
+                            // Auto-start face capture after delay
+                            setTimeout(() => {
+                                startOAuthFaceRegistration();
+                            }, 2000);
+                            return;
+                        } else if (oauthData.requires_face_verification) {
+                            console.log('🔐 OAuth requires face VERIFICATION');
+                            updateStatus('Please verify your face to complete Google login');
+                            speak(`Welcome back ${userName}! Please verify your face to continue`);
+                            
+                            // Show message and start face capture for verification
+                            const msg = document.getElementById('faceOnlyStatusMsg');
+                            msg.textContent = `Welcome back! Please verify your face to complete Google login`;
+                            msg.style.display = 'block';
+                            msg.style.background = 'rgba(255,255,255,0.2)';
+                            msg.style.color = 'white';
+                            
+                            // Auto-start face verification after delay
+                            setTimeout(() => {
+                                startOAuthFaceVerification();
+                            }, 2000);
+                            return;
+                        }
+                    } else {
+                        console.log('ℹ️ No pending OAuth login');
+                    }
+                } else {
+                    console.log('⚠️ OAuth pending status check failed:', oauthRes.status);
+                }
+                
+                // Normal auth status check
+                console.log('🔍 Checking normal auth status...');
+                const res = await fetch('/api/auth/status', { credentials: 'same-origin' });
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON. Status: ${res.status}`);
+                }
+                const data = await res.json();
+                console.log('Auth status data:', data);
+
+                if (data.authenticated && data.user) {
+                    console.log('✅ User is authenticated:', data.user.email);
+                    // User is logged in, show dashboard
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+                    document.getElementById('statusText').style.display = 'none';
+                    document.getElementById('micButton').style.display = 'none';
+                    
+                    // Fill dashboard
+                    const user = data.user;
+                    const profile = data.profile || {};
+                    
+                    document.getElementById('userName').textContent = user.name || 'User';
+                    document.getElementById('userEmail').textContent = user.email || '-';
+                    document.getElementById('userFullName').textContent = user.name || '-';
+                    document.getElementById('userCreated').textContent = user.created_at ? new Date(user.created_at).toLocaleDateString() : '-';
+
+                    // Load preferences
+                    if (profile.voice_speed) document.getElementById('voiceSpeed').value = profile.voice_speed;
+                    if (profile.voice_pitch) document.getElementById('voicePitch').value = profile.voice_pitch;
+                    if (profile.language) {
+                        document.getElementById('language').value = profile.language;
+                        currentLanguage = profile.language;
+                        if (recognition) recognition.lang = currentLanguage;
+                    }
+                    
+                    updateVoiceDisplay();
+                    
+                    // Queue welcome message to be played after user interaction
+                    const welcomeMsg = getTranslation('welcome_back') + ', ' + (user.name || 'User') + '.';
+                    pendingSpeech.push(welcomeMsg);
+                } else {
+                    console.log('ℹ️ User is not authenticated');
+                    // User is not logged in, show greeting
+                    // Queue greeting to be played after user interaction
+                    pendingSpeech.push(getTranslation('greeting'));
+                    updateStatus(getTranslation('wake_prompt'));
+                    setState(STATE.IDLE);
+                }
+            } catch (err) {
+                console.error('Error checking auth status:', err);
+                // Default to greeting if check fails - queue for later
+                pendingSpeech.push(getTranslation('greeting'));
+                updateStatus(getTranslation('wake_prompt'));
+                setState(STATE.IDLE);
+            }
+        }
+
+        // Voice-driven login: collects email/password, then triggers face verify if required
+        async function submitLogin() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            if (!email) {
+                showError('Email is required');
+                speak('Please enter your email');
+                return;
+            }
+
+            // If password is not provided, ask for it
+            if (!password) {
+                speak('Please say your password');
+                setState(STATE.WAITING_PASSWORD);
+                setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                return;
+            }
+
+            try {
+                // Step 1: Verify email and password
+                updateStatus('Verifying credentials...');
+                speak('Verifying your credentials');
+                
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON`);
+                }
+                
+                const data = await res.json();
+
+                if (!res.ok) {
+                    // Login failed
+                    const errMsg = data.error || 'Login failed';
+                    console.error('Login error:', errMsg);
+                    updateStatus(errMsg);
+                    showError(errMsg);
+                    speak(errMsg);
+                    
+                    // Reset and ask again
+                    setTimeout(() => {
+                        document.getElementById('loginEmail').value = '';
+                        document.getElementById('loginPassword').value = '';
+                        capturedLoginFaceImage = null;
+                        capturedLoginFaceDescriptors = null;
+                        speak('Please try again. Say your email address');
+                        setState(STATE.WAITING_EMAIL);
+                        setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                    }, 2000);
+                    return;
+                }
+
+                // Check if face registration is required
+                if (data.requires_face_setup) {
+                    showError('Face registration required. Please register with face verification first.');
+                    speak('Face registration is required. Please complete registration with face verification.');
+                    setTimeout(() => {
+                        document.getElementById('loginEmail').value = '';
+                        document.getElementById('loginPassword').value = '';
+                        setState(STATE.IDLE);
+                        hideAll();
+                    }, 2000);
+                    return;
+                }
+
+                // Step 2: Face verification required
+                if (data.requires_face_verification) {
+                    updateStatus('Face verification required. Please capture your face.');
+                    speak('Password verified. Now please capture your face for verification');
+                    
+                    // Store email for face verification step
+                    window.currentLoginEmail = email;
+                    window.currentLoginPassword = password;
+                    
+                    // Show face capture section
+                    document.getElementById('loginFaceStatusMsg').style.display = 'block';
+                    document.getElementById('loginFaceStatusMsg').textContent = 'Please capture your face to complete login';
+                    document.getElementById('loginFaceStatusMsg').style.background = '#cfe2ff';
+                    document.getElementById('loginFaceStatusMsg').style.color = '#084298';
+                    
+                    // Start face capture
+                    await startLoginFaceCapture();
+                    return;
+                }
+
+                // Should not reach here with new flow
+                showError('Unexpected login state');
+            } catch (err) {
+                console.error('Login request failed:', err);
+                updateStatus('Login request failed: ' + err.message);
+                showError('Login request failed: ' + err.message);
+                speak('Login failed. Please try again');
+                
+                setTimeout(() => {
+                    document.getElementById('loginEmail').value = '';
+                    document.getElementById('loginPassword').value = '';
+                    capturedLoginFaceImage = null;
+                    capturedLoginFaceDescriptors = null;
+                    speak('Please say your email address');
+                    setState(STATE.WAITING_EMAIL);
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 500);
+                }, 2000);
+            }
+        }
+
+        // New function for face verification during login
+        // Face verification step after password is validated
+        async function verifyLoginFace() {
+            const email = window.currentLoginEmail;
+            
+            if (!capturedLoginFaceImage || !capturedLoginFaceDescriptors) {
+                showError('Face capture is required for login');
+                speak('Please capture your face to continue');
+                return;
+            }
+
+            try {
+                updateStatus('Verifying face...');
+                speak('Verifying your face. Please wait');
+                
+                const res = await fetch('/api/auth/verify-face-login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        face_descriptors: capturedLoginFaceDescriptors
+                    })
+                });
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON`);
+                }
+                
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    // Face verified and logged in
+                    updateStatus('Face verified! Logging you in...');
+                    speak('Face verified. Welcome back!');
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 1000);
+                } else {
+                    const errMsg = data.error || 'Face verification failed';
+                    console.error('Face verification error:', errMsg);
+                    updateStatus(errMsg);
+                    showError(errMsg);
+                    speak(errMsg + '. Please try again');
+                    
+                    // Reset face capture and retry
+                    setTimeout(() => {
+                        capturedLoginFaceImage = null;
+                        capturedLoginFaceDescriptors = null;
+                        document.getElementById('loginFaceStatusMsg').textContent = 'Face verification failed. Please try again or use password login';
+                        document.getElementById('startLoginCameraBtn').style.display = 'inline-block';
+                        document.getElementById('captureLoginFaceBtn').style.display = 'none';
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('Face verification request failed:', err);
+                updateStatus('Face verification failed: ' + err.message);
+                showError('Face verification failed: ' + err.message);
+                speak('Face verification failed. Please try again');
+                
+                setTimeout(() => {
+                    document.getElementById('startLoginCameraBtn').style.display = 'inline-block';
+                    document.getElementById('captureLoginFaceBtn').style.display = 'none';
+                }, 2000);
+            }
+        }
+
+        // NEW: Face-Only Login Functions
+        async function startFaceOnlyLogin() {
+            const video = document.getElementById('faceOnlyVideo');
+            const startBtn = document.getElementById('startFaceOnlyBtn');
+            const captureBtn = document.getElementById('captureFaceOnlyBtn');
+            const retakeBtn = document.getElementById('retakeFaceOnlyBtn');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            try {
+                // Stop any existing stream
+                if (faceOnlyVideoStream) {
+                    faceOnlyVideoStream.getTracks().forEach(track => track.stop());
+                }
+                
+                faceOnlyVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false 
+                });
+                
+                video.srcObject = faceOnlyVideoStream;
+                
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error('Video play error:', e));
+                };
+                
+                video.style.display = 'block';
+                startBtn.style.display = 'none';
+                captureBtn.style.display = 'inline-block';
+                retakeBtn.style.display = 'inline-block';
+                
+                msg.textContent = 'Position your face and wait for detection...';
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(255,255,255,0.2)';
+                msg.style.color = 'white';
+                
+                updateStatus('Face-only login: Detecting face...');
+                speak('Please look at the camera for face recognition login');
+                
+                // Auto-capture face when detected
+                await autoCaptureFaceOnly();
+            } catch (e) {
+                console.error('Camera access failed:', e);
+                msg.textContent = 'Unable to access camera: ' + e.message;
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                msg.style.color = 'white';
+                showError('Camera access denied');
+                speak('Unable to access camera');
+            }
+        }
+
+        async function autoCaptureFaceOnly() {
+            const video = document.getElementById('faceOnlyVideo');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            msg.textContent = 'Detecting face... Please look at the camera';
+            
+            // Check if face-api is ready
+            if (!window.faceApiReady) {
+                console.warn('Face-API not ready, falling back to manual capture');
+                msg.textContent = 'Face detection unavailable. Click "Capture Face" manually.';
+                msg.style.background = 'rgba(255,200,100,0.3)';
+                document.getElementById('captureFaceOnlyBtn').style.display = 'inline-block';
+                return;
+            }
+            
+            const maxAttempts = 30; // 30 seconds timeout
+            let attempts = 0;
+            
+            while (attempts < maxAttempts && faceOnlyVideoStream) {
+                try {
+                    if (!video.videoWidth || !video.videoHeight) {
+                        console.log('Video not ready, waiting...');
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        continue;
+                    }
+                    
+                    const canvas = document.getElementById('faceOnlyCanvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const detections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    
+                    if (detections && detections.length > 0) {
+                        msg.textContent = 'Face detected! Verifying...';
+                        msg.style.background = 'rgba(100,255,100,0.3)';
+                        msg.style.color = 'white';
+                        
+                        capturedFaceOnlyDescriptors = Array.from(detections[0].descriptor);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        // Stop video stream
+                        faceOnlyVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        // Update buttons
+                        document.getElementById('startFaceOnlyBtn').style.display = 'inline-block';
+                        document.getElementById('captureFaceOnlyBtn').style.display = 'none';
+                        document.getElementById('retakeFaceOnlyBtn').style.display = 'none';
+                        
+                        msg.textContent = 'Face captured! Logging you in...';
+                        speak('Face detected. Logging you in');
+                        
+                        // Submit face-only login
+                        setTimeout(() => {
+                            submitFaceOnlyLogin();
+                        }, 500);
+                        
+                        return;
+                    }
+                    
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (e) {
+                    console.error('Face detection error:', e);
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            // Timeout
+            msg.textContent = 'Face detection timeout. Click "Capture Face" manually.';
+            msg.style.background = 'rgba(255,200,100,0.3)';
+            document.getElementById('captureFaceOnlyBtn').style.display = 'inline-block';
+        }
+
+        async function captureFaceOnly() {
+            const video = document.getElementById('faceOnlyVideo');
+            const canvas = document.getElementById('faceOnlyCanvas');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            if (!video || !video.videoWidth) {
+                msg.textContent = 'Video not ready. Please wait.';
+                msg.style.display = 'block';
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                return;
+            }
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            try {
+                if (window.faceApiReady) {
+                    const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    if (detection) {
+                        capturedFaceOnlyDescriptors = Array.from(detection.descriptor);
+                        
+                        // Stop video stream
+                        faceOnlyVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        // Update buttons
+                        document.getElementById('startFaceOnlyBtn').style.display = 'inline-block';
+                        document.getElementById('captureFaceOnlyBtn').style.display = 'none';
+                        document.getElementById('retakeFaceOnlyBtn').style.display = 'none';
+                        
+                        msg.textContent = 'Face captured! Logging in...';
+                        msg.style.display = 'block';
+                        msg.style.background = 'rgba(100,255,100,0.3)';
+                        msg.style.color = 'white';
+                        
+                        speak('Face captured. Logging you in');
+                        
+                        // Submit login
+                        setTimeout(() => {
+                            submitFaceOnlyLogin();
+                        }, 1000);
+                    } else {
+                        msg.textContent = 'No face detected. Please try again.';
+                        msg.style.background = 'rgba(255,200,100,0.3)';
+                    }
+                } else {
+                    msg.textContent = 'Face-API not ready. Please try again.';
+                    msg.style.background = 'rgba(255,200,100,0.3)';
+                }
+            } catch (e) {
+                console.error('Face detection error:', e);
+                msg.textContent = 'Face detection error. Please try again.';
+                msg.style.background = 'rgba(255,100,100,0.3)';
+            }
+        }
+
+        async function submitFaceOnlyLogin() {
+            if (!capturedFaceOnlyDescriptors) {
+                showError('Face capture is required');
+                speak('Please capture your face to login');
+                return;
+            }
+
+            try {
+                updateStatus('Verifying your face...');
+                const msg = document.getElementById('faceOnlyStatusMsg');
+                msg.textContent = 'Verifying your face... Please wait';
+                msg.style.background = 'rgba(255,255,255,0.2)';
+                
+                const res = await fetch('/api/auth/face-login', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        face_descriptors: capturedFaceOnlyDescriptors
+                    })
+                });
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON`);
+                }
+                
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    // Face verified and logged in
+                    msg.textContent = data.message || 'Login successful!';
+                    msg.style.background = 'rgba(100,255,100,0.3)';
+                    
+                    updateStatus(data.message || 'Login successful!');
+                    speak(data.message || 'Welcome back!');
+                    
+                    setTimeout(() => {
+                        capturedFaceOnlyDescriptors = null;
+                        showDashboard();
+                    }, 1500);
+                } else {
+                    const errMsg = data.error || 'Face not recognized';
+                    console.error('Face-only login error:', errMsg);
+                    
+                    msg.textContent = errMsg;
+                    msg.style.background = 'rgba(255,100,100,0.3)';
+                    
+                    updateStatus(errMsg);
+                    showError(errMsg);
+                    speak('Face not recognized. Please try again or use email and password');
+                    
+                    // Reset and allow retry
+                    setTimeout(() => {
+                        capturedFaceOnlyDescriptors = null;
+                        document.getElementById('startFaceOnlyBtn').style.display = 'inline-block';
+                        msg.textContent = 'Please try again or use traditional login below';
+                        msg.style.background = 'rgba(255,255,255,0.2)';
+                    }, 3000);
+                }
+            } catch (err) {
+                console.error('Face-only login request failed:', err);
+                const msg = document.getElementById('faceOnlyStatusMsg');
+                msg.textContent = 'Login failed: ' + err.message;
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                
+                updateStatus('Login failed: ' + err.message);
+                showError('Login failed: ' + err.message);
+                speak('Login failed. Please try again');
+                
+                setTimeout(() => {
+                    capturedFaceOnlyDescriptors = null;
+                    document.getElementById('startFaceOnlyBtn').style.display = 'inline-block';
+                }, 3000);
+            }
+        }
+
+        // OAuth Face Registration/Verification Functions
+        let oauthFaceVideoStream = null;
+        let capturedOAuthFaceDescriptors = null;
+        let capturedOAuthFaceImage = null;
+
+        async function startOAuthFaceRegistration() {
+            const video = document.getElementById('faceOnlyVideo');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            try {
+                if (oauthFaceVideoStream) {
+                    oauthFaceVideoStream.getTracks().forEach(track => track.stop());
+                }
+                
+                oauthFaceVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false 
+                });
+                
+                video.srcObject = oauthFaceVideoStream;
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error('Video play error:', e));
+                };
+                
+                video.style.display = 'block';
+                msg.textContent = 'Detecting face for registration...';
+                msg.style.display = 'block';
+                
+                await autoOAuthFaceCapture(true); // true = registration mode
+            } catch (e) {
+                console.error('Camera access failed:', e);
+                msg.textContent = 'Unable to access camera: ' + e.message;
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                speak('Unable to access camera');
+            }
+        }
+
+        async function startOAuthFaceVerification() {
+            const video = document.getElementById('faceOnlyVideo');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            try {
+                if (oauthFaceVideoStream) {
+                    oauthFaceVideoStream.getTracks().forEach(track => track.stop());
+                }
+                
+                oauthFaceVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false 
+                });
+                
+                video.srcObject = oauthFaceVideoStream;
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error('Video play error:', e));
+                };
+                
+                video.style.display = 'block';
+                msg.textContent = 'Detecting face for verification...';
+                msg.style.display = 'block';
+                
+                await autoOAuthFaceCapture(false); // false = verification mode
+            } catch (e) {
+                console.error('Camera access failed:', e);
+                msg.textContent = 'Unable to access camera: ' + e.message;
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                speak('Unable to access camera');
+            }
+        }
+
+        async function autoOAuthFaceCapture(isRegistration) {
+            const video = document.getElementById('faceOnlyVideo');
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            if (!window.faceApiReady) {
+                msg.textContent = 'Face detection not ready. Please wait...';
+                return;
+            }
+            
+            const maxAttempts = 30;
+            let attempts = 0;
+            
+            while (attempts < maxAttempts && oauthFaceVideoStream) {
+                try {
+                    if (!video.videoWidth || !video.videoHeight) {
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        continue;
+                    }
+                    
+                    const canvas = document.getElementById('faceOnlyCanvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    const detections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    
+                    if (detections && detections.length > 0) {
+                        msg.textContent = 'Face detected! Processing...';
+                        msg.style.background = 'rgba(100,255,100,0.3)';
+                        
+                        capturedOAuthFaceDescriptors = Array.from(detections[0].descriptor);
+                        capturedOAuthFaceImage = canvas.toDataURL('image/jpeg', 0.9);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        oauthFaceVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        if (isRegistration) {
+                            await submitOAuthFaceRegistration();
+                        } else {
+                            await submitOAuthFaceVerification();
+                        }
+                        return;
+                    }
+                    
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (e) {
+                    console.error('Face detection error:', e);
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            msg.textContent = 'Face detection timeout. Please refresh and try again.';
+            msg.style.background = 'rgba(255,200,100,0.3)';
+        }
+
+        async function submitOAuthFaceRegistration() {
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            try {
+                msg.textContent = 'Completing registration...';
+                
+                const res = await fetch('/api/auth/complete-oauth-face-registration', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        face_descriptors: capturedOAuthFaceDescriptors,
+                        face_image: capturedOAuthFaceImage
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    msg.textContent = 'Registration complete! Logging you in...';
+                    msg.style.background = 'rgba(100,255,100,0.3)';
+                    speak('Face registered successfully. Welcome!');
+                    
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 1500);
+                } else {
+                    msg.textContent = data.error || 'Registration failed';
+                    msg.style.background = 'rgba(255,100,100,0.3)';
+                    speak('Registration failed. Please try again');
+                }
+            } catch (err) {
+                console.error('OAuth face registration failed:', err);
+                msg.textContent = 'Registration failed: ' + err.message;
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                speak('Registration failed');
+            }
+        }
+
+        async function submitOAuthFaceVerification() {
+            const msg = document.getElementById('faceOnlyStatusMsg');
+            
+            try {
+                msg.textContent = 'Verifying your face...';
+                
+                const res = await fetch('/api/auth/complete-oauth-face-verification', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        face_descriptors: capturedOAuthFaceDescriptors
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    msg.textContent = 'Face verified! Logging you in...';
+                    msg.style.background = 'rgba(100,255,100,0.3)';
+                    speak('Face verified. Welcome back!');
+                    
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 1500);
+                } else {
+                    msg.textContent = data.error || 'Verification failed';
+                    msg.style.background = 'rgba(255,100,100,0.3)';
+                    speak('Face verification failed. Please try again');
+                }
+            } catch (err) {
+                console.error('OAuth face verification failed:', err);
+                msg.textContent = 'Verification failed: ' + err.message;
+                msg.style.background = 'rgba(255,100,100,0.3)';
+                speak('Verification failed');
+            }
+        }
+
+        // Registration flow: name/email/password + mandatory face capture
+        async function submitRegister() {
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+
+            if (!name || !email || !password) {
+                showError('All fields are required');
+                speak('Please fill in all fields');
+                return;
+            }
+
+            // Check if face was captured
+            if (!capturedFaceImage || !capturedFaceDescriptors) {
+                showError('Face capture is required for registration. Please capture your face.');
+                speak('Please capture your face to complete registration');
+                return;
+            }
+
+            try {
+                // Register user with face data (now mandatory)
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        face_image: capturedFaceImage,
+                        face_descriptors: capturedFaceDescriptors
+                    })
+                });
+                
+                const contentType = res.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON. Status: ${res.status}`);
+                }
+                const data = await res.json();
+
+                if (!res.ok) {
+                    console.error('Registration error:', data.error);
+                    showError(data.error || 'Registration failed');
+                    speak(data.error || 'Registration failed');
+                    return;
+                }
+
+                // Registration successful: guide user to login screen (voice-driven)
+                showResponse('Registration successful with face verification! Let\'s log you in.');
+                speak(getTranslation('register_success'));
+
+                // Switch to login form and prompt for voice input (email -> password -> face)
+                document.getElementById('registerSection').classList.add('hidden');
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+                document.getElementById('errorBox').classList.add('hidden');
+                document.getElementById('responseBox').classList.add('hidden');
+                updateStatus(getTranslation('email_prompt'));
+
+                // Start voice flow: wait for email first
+                setState(STATE.WAITING_EMAIL);
+                try { recognition.start(); } catch (e) { console.warn('Recognition start failed', e); }
+            } catch (err) {
+                console.error('Registration request failed:', err);
+                showError('Registration request failed');
+                speak(getTranslation('register_failed'));
+                setState(STATE.IDLE);
+            }
+        }
+
+        // Face Capture Functions for Registration
+        let registrationVideoStream = null;
+        let loginVideoStream = null;
+        let faceOnlyVideoStream = null;
+        let capturedFaceImage = null;
+        let capturedFaceDescriptors = null;
+        let capturedLoginFaceImage = null;
+        let capturedLoginFaceDescriptors = null;
+        let capturedFaceOnlyDescriptors = null;
+
+        // Registration camera pipeline: open stream and attempt auto-capture
+        async function startFaceCapture() {
+            const video = document.getElementById('registrationVideo');
+            const startBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureFaceBtn');
+            const retakeBtn = document.getElementById('retakeFaceBtn');
+            
+            try {
+                registrationVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false 
+                });
+                
+                video.srcObject = registrationVideoStream;
+                
+                // Ensure video plays
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error('Video play error:', e));
+                };
+                
+                video.style.display = 'block';
+                startBtn.style.display = 'none';
+                captureBtn.style.display = 'inline-block';
+                retakeBtn.style.display = 'inline-block';
+                
+                const msg = document.getElementById('faceStatusMsg');
+                msg.textContent = 'Detecting face...';
+                msg.style.display = 'block';
+                msg.style.background = '#cfe2ff';
+                msg.style.color = '#084298';
+                
+                // Auto-capture face when detected
+                await autoCaptureFace();
+            } catch (e) {
+                console.error('Camera access failed:', e);
+                const msg = document.getElementById('faceStatusMsg');
+                msg.textContent = 'Unable to access camera: ' + e.message;
+                msg.style.display = 'block';
+                msg.style.background = '#f8d7da';
+                msg.style.color = '#721c24';
+            }
+        }
+
+        // Auto-detect face for registration; falls back to manual capture after timeout
+        async function autoCaptureFace() {
+            const video = document.getElementById('registrationVideo');
+            const msg = document.getElementById('faceStatusMsg');
+            
+            msg.textContent = 'Detecting face... (may take a moment)';
+            msg.style.background = '#cfe2ff';
+            msg.style.color = '#084298';
+            
+            // Check if face-api is ready
+            if (!window.faceApiReady) {
+                console.warn('Face-API not ready, falling back to manual capture');
+                msg.textContent = 'Face detection unavailable. Click "Capture Face" button to manually capture your face.';
+                msg.style.background = '#fff3cd';
+                msg.style.color = '#664d03';
+                document.getElementById('captureFaceBtn').style.display = 'inline-block';
+                return;
+            }
+            
+            const maxAttempts = 30; // 30 seconds timeout
+            let attempts = 0;
+            
+            while (attempts < maxAttempts && registrationVideoStream) {
+                try {
+                    // Check video is ready
+                    if (!video.videoWidth || !video.videoHeight) {
+                        console.log('Video not ready yet, waiting...');
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        continue;
+                    }
+                    
+                    const canvas = document.getElementById('registrationCanvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Try to detect face using face-api with descriptor for registration
+                    const detections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    
+                    if (detections && detections.length > 0) {
+                        // Face detected - auto capture
+                        msg.textContent = 'Face detected! Capturing...';
+                        msg.style.background = '#d1e7dd';
+                        msg.style.color = '#0f5132';
+                        
+                        // Store the face descriptor for later use during login
+                        capturedFaceDescriptors = Array.from(detections[0].descriptor);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay for better capture
+                        
+                        capturedFaceImage = canvas.toDataURL('image/jpeg', 0.9);
+                        
+                        // Stop video stream
+                        registrationVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        // Update buttons
+                        document.getElementById('startCameraBtn').style.display = 'inline-block';
+                        document.getElementById('captureFaceBtn').style.display = 'none';
+                        document.getElementById('retakeFaceBtn').style.display = 'none';
+                        
+                        // Show success message
+                        msg.textContent = 'Face captured successfully. Completing registration...';
+                        msg.style.background = '#d1e7dd';
+                        msg.style.color = '#0f5132';
+                        
+                        // Auto-submit registration after brief delay
+                        speak('Face captured. Completing your registration.');
+                        setTimeout(() => {
+                            submitRegister();
+                        }, 1500);
+                        
+                        return;
+                    }
+                    
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Check every second
+                } catch (e) {
+                    console.error('Face detection error:', e);
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            // Timeout - no face detected
+            msg.textContent = 'Face detection timeout. Click "Capture Face" to manually capture, or click "Retake" to try again.';
+            msg.style.background = '#fff3cd';
+            msg.style.color = '#664d03';
+            document.getElementById('captureFaceBtn').style.display = 'inline-block';
+        }
+
+        // Login camera pipeline: open stream and attempt auto-capture for verification
+        async function startLoginFaceCapture() {
+            const video = document.getElementById('loginVideo');
+            const startBtn = document.getElementById('startLoginCameraBtn');
+            const captureBtn = document.getElementById('captureLoginFaceBtn');
+            const retakeBtn = document.getElementById('retakeLoginFaceBtn');
+            
+            try {
+                loginVideoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false 
+                });
+                
+                video.srcObject = loginVideoStream;
+                
+                // Ensure video plays
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.error('Video play error:', e));
+                };
+                
+                video.style.display = 'block';
+                startBtn.style.display = 'none';
+                captureBtn.style.display = 'inline-block';
+                retakeBtn.style.display = 'inline-block';
+                
+                const msg = document.getElementById('loginFaceStatusMsg');
+                msg.textContent = 'Detecting face...';
+                msg.style.display = 'block';
+                msg.style.background = '#cfe2ff';
+                msg.style.color = '#084298';
+                
+                // Auto-capture face when detected
+                await autoLoginCaptureFace();
+            } catch (e) {
+                console.error('Camera access failed:', e);
+                const msg = document.getElementById('loginFaceStatusMsg');
+                msg.textContent = 'Unable to access camera: ' + e.message;
+                msg.style.display = 'block';
+                msg.style.background = '#f8d7da';
+                msg.style.color = '#721c24';
+            }
+        }
+
+        // Auto-detect face for login verification; manual fallback on timeout
+        async function autoLoginCaptureFace() {
+            const video = document.getElementById('loginVideo');
+            const msg = document.getElementById('loginFaceStatusMsg');
+            
+            msg.textContent = 'Detecting face for login... (may take a moment)';
+            msg.style.background = '#cfe2ff';
+            msg.style.color = '#084298';
+            
+            // Check if face-api is ready
+            if (!window.faceApiReady) {
+                console.warn('Face-API not ready for login, falling back to manual capture');
+                msg.textContent = 'Face detection unavailable. Click "Capture Face" button to manually capture your face.';
+                msg.style.background = '#fff3cd';
+                msg.style.color = '#664d03';
+                document.getElementById('captureLoginFaceBtn').style.display = 'inline-block';
+                return;
+            }
+            
+            const maxAttempts = 30; // 30 seconds timeout
+            let attempts = 0;
+            
+            while (attempts < maxAttempts && loginVideoStream) {
+                try {
+                    // Check video is ready
+                    if (!video.videoWidth || !video.videoHeight) {
+                        console.log('Video not ready for login, waiting...');
+                        attempts++;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        continue;
+                    }
+                    
+                    const canvas = document.getElementById('loginCanvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Try to detect face with descriptors for login
+                    const detections = await faceapi.detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    
+                    if (detections && detections.length > 0) {
+                        // Face detected - capture for login
+                        msg.textContent = 'Face detected! Logging in...';
+                        msg.style.background = '#d1e7dd';
+                        msg.style.color = '#0f5132';
+                        
+                        // Store face descriptors for login verification
+                        capturedLoginFaceDescriptors = Array.from(detections[0].descriptor);
+                        
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        capturedLoginFaceImage = canvas.toDataURL('image/jpeg', 0.9);
+                        
+                        // Stop video stream
+                        loginVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        // Update buttons
+                        document.getElementById('startLoginCameraBtn').style.display = 'inline-block';
+                        document.getElementById('captureLoginFaceBtn').style.display = 'none';
+                        document.getElementById('retakeLoginFaceBtn').style.display = 'none';
+                        
+                        // Show success message
+                        msg.textContent = 'Face captured successfully! Verifying...';
+                        msg.style.background = '#d1e7dd';
+                        msg.style.color = '#0f5132';
+                        
+                        // Verify face after brief delay
+                        setTimeout(() => {
+                            verifyLoginFace();
+                        }, 1000);
+                        
+                        return;
+                    }
+                    
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (e) {
+                    console.error('Face detection error during login:', e);
+                    attempts++;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            // Timeout
+            msg.textContent = 'Face detection timeout. Click "Capture Face" to manually capture.';
+            msg.style.background = '#fff3cd';
+            msg.style.color = '#664d03';
+            document.getElementById('captureLoginFaceBtn').style.display = 'inline-block';
+        }
+
+        // Manual capture for login face verification when auto-detect is unavailable
+        async function captureLoginFace() {
+            const video = document.getElementById('loginVideo');
+            const canvas = document.getElementById('loginCanvas');
+            
+            if (!video || !video.videoWidth) {
+                const msg = document.getElementById('loginFaceStatusMsg');
+                msg.textContent = 'Video not ready. Please wait.';
+                msg.style.display = 'block';
+                msg.style.background = '#f8d7da';
+                msg.style.color = '#721c24';
+                return;
+            }
+            
+            // Set canvas size to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to base64
+            capturedLoginFaceImage = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Extract face descriptors if face-api is ready
+            try {
+                if (window.faceApiReady) {
+                    const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                    if (detection) {
+                        capturedLoginFaceDescriptors = Array.from(detection.descriptor);
+                        
+                        // Stop video stream
+                        loginVideoStream.getTracks().forEach(track => track.stop());
+                        video.style.display = 'none';
+                        
+                        // Update buttons
+                        document.getElementById('startLoginCameraBtn').style.display = 'inline-block';
+                        document.getElementById('captureLoginFaceBtn').style.display = 'none';
+                        document.getElementById('retakeLoginFaceBtn').style.display = 'none';
+                        
+                        // Show success message
+                        const msg = document.getElementById('loginFaceStatusMsg');
+                        msg.textContent = 'Face captured successfully! Logging in...';
+                        msg.style.display = 'block';
+                        msg.style.background = '#d4edda';
+                        msg.style.color = '#155724';
+                        
+                        // Trigger login after brief delay
+                        setTimeout(() => {
+                            submitLogin();
+                        }, 1000);
+                    } else {
+                        const msg = document.getElementById('loginFaceStatusMsg');
+                        msg.textContent = 'No face detected. Please try again.';
+                        msg.style.display = 'block';
+                        msg.style.background = '#fff3cd';
+                        msg.style.color = '#664d03';
+                    }
+                } else {
+                    const msg = document.getElementById('loginFaceStatusMsg');
+                    msg.textContent = 'Face-API not ready. Please try again.';
+                    msg.style.display = 'block';
+                    msg.style.background = '#fff3cd';
+                    msg.style.color = '#664d03';
+                }
+            } catch (e) {
+                console.error('Face detection error:', e);
+                const msg = document.getElementById('loginFaceStatusMsg');
+                msg.textContent = 'Face detection error. Please try again.';
+                msg.style.display = 'block';
+                msg.style.background = '#f8d7da';
+                msg.style.color = '#721c24';
+            }
+        }
+
+        // Manual capture for registration when auto-detect is unavailable
+        async function captureFace() {
+            const video = document.getElementById('registrationVideo');
+            const canvas = document.getElementById('registrationCanvas');
+            
+            if (!video || !video.videoWidth) {
+                const msg = document.getElementById('faceStatusMsg');
+                msg.textContent = 'Video not ready. Please wait.';
+                msg.style.display = 'block';
+                msg.style.background = '#f8d7da';
+                msg.style.color = '#721c24';
+                return;
+            }
+            
+            // Set canvas size to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert to base64
+            capturedFaceImage = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Stop video stream
+            registrationVideoStream.getTracks().forEach(track => track.stop());
+            video.style.display = 'none';
+            
+            // Update buttons
+            document.getElementById('startCameraBtn').style.display = 'inline-block';
+            document.getElementById('captureFaceBtn').style.display = 'none';
+            document.getElementById('retakeFaceBtn').style.display = 'none';
+            
+            // Show success message
+            const msg = document.getElementById('faceStatusMsg');
+            msg.textContent = 'Face captured successfully. Completing registration...';
+            msg.style.display = 'block';
+            msg.style.background = '#d4edda';
+            msg.style.color = '#155724';
+            
+            // Auto-submit registration
+            speak('Face captured. Completing your registration.');
+            setTimeout(() => {
+                submitRegister();
+            }, 1500);
+        }
+
+        document.getElementById('micButton').addEventListener('click', async () => {
+            autoEnableAudio();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(t => t.stop());
+            } catch (err) {
+                showError('Microphone permission denied');
+            }
+        });
+
+        function attachGestureUnlock() {
+            const once = () => { 
+                // user gesture detected
+                try {
+                    // Create audio context on first gesture
+                    if (!audioContext) {
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        // audio context created
+                    }
+                    // Unlock audio
+                    autoEnableAudio();
+                } catch(e){
+                    console.error('Error on gesture unlock:', e);
+                } finally { 
+                    window.removeEventListener('click', once); 
+                    window.removeEventListener('touchstart', once); 
+                }
+            };
+            window.addEventListener('click', once);
+            window.addEventListener('touchstart', once);
+        }
+        attachGestureUnlock();
+
+        // Initialize face-api models for face detection
+        async function initializeFaceAPI() {
+            try {
+                // Wait for faceapi library to be available
+                let attempts = 0;
+                while (typeof faceapi === 'undefined' && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                if (typeof faceapi === 'undefined') {
+                    console.warn('Face-API library not loaded after 5 seconds');
+                    return;
+                }
+                
+                console.log('Initializing face-api models from CDN...');
+                
+                // Use CDN for models only - local models are incompatible
+                const modelsPath = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@latest/model/';
+                
+                // Load all required face-api models from CDN
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(modelsPath),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(modelsPath),
+                    faceapi.nets.faceExpressionNet.loadFromUri(modelsPath)
+                ]);
+                
+                console.log('✓ Face-API models loaded successfully from CDN');
+                window.faceApiReady = true;
+                
+            } catch (error) {
+                console.error('Failed to load face-api models from CDN:', error);
+                console.warn('Face detection will be unavailable');
+                window.faceApiReady = false;
+            }
+        }
+
+        // Initialize face-api when page loads
+        window.addEventListener('load', () => {
+            initializeFaceAPI();
+        });
+
+        // Also try to initialize immediately in case load event already fired
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initializeFaceAPI();
+            });
+        } else {
+            // Page already loaded
+            initializeFaceAPI();
+        }
+
+        // Enable audio button: explicit user gesture to unlock SpeechSynthesis and AudioContext
+        document.getElementById('enableAudioBtn').addEventListener('click', () => {
+            try {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioContext.state === 'suspended') audioContext.resume().catch(()=>{});
+            } catch(e) { console.error('Error creating audio context on enable:', e); }
+
+            audioEnabled = true;
+            document.getElementById('enableAudioBtn').classList.add('hidden');
+            // Refresh voices and play any queued speech
+            listAvailableVoices();
+            // Ensure any queued pending speech is spoken
+            autoEnableAudio();
+            setTimeout(() => {
+                try { if (pendingSpeech.length === 0) speak(getTranslation('greeting')); } catch(e) { console.error(e); }
+            }, 300);
+        });
+
+    </script>
+</body>
+</html>
+
+

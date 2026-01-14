@@ -1,0 +1,17 @@
+Flask>=3.0.0
+Flask-Session>=0.5.0
+Flask-Cors>=4.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Talisman>=1.1.0
+Werkzeug>=2.3.0
+python-dotenv>=1.0.0
+SpeechRecognition>=3.10.0
+google-auth-oauthlib>=1.2.0
+google-auth>=2.26.0
+requests>=2.31.0
+Pillow>=9.0.0
+pydantic>=2.0.0  # For input validation
+python-jose>=3.3.0  # For JWT token handling
+cryptography>=41.0.0  # For encryption
+pytest>=7.4.0  # For testing
+pytest-cov>=4.1.0  # For test coverage
