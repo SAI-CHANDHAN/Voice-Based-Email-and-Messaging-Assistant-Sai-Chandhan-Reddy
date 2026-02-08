@@ -39,7 +39,20 @@ const intentPatterns: { action: IntentAction; platform: TargetPlatform; keywords
   { action: "VIEW_FOLDER", platform: "gmail", keywords: ["open trash", "show trash", "trash", "deleted"] },
   { action: "VIEW_FOLDER", platform: "gmail", keywords: ["open spam", "show spam", "spam"] },
 
-  // Actions
+  // Telegram Navigation
+  { action: "OPEN_PLATFORM", platform: "telegram", keywords: ["open telegram", "go to telegram", "launch telegram", "open tg"] },
+  { action: "READ", platform: "telegram", keywords: ["read telegram", "check telegram", "telegram messages", "new telegram"] },
+  { action: "SEND", platform: "telegram", keywords: ["send telegram", "message on telegram", "telegram to", "message via telegram"] },
+  { action: "REPLY", platform: "telegram", keywords: ["reply on telegram", "respond on telegram", "reply to telegram"] },
+
+  // WhatsApp Navigation
+  { action: "OPEN_PLATFORM", platform: "whatsapp", keywords: ["open whatsapp", "go to whatsapp", "launch whatsapp", "open whats app"] },
+  { action: "READ", platform: "whatsapp", keywords: ["read whatsapp", "check whatsapp", "whatsapp messages", "new whatsapp"] },
+  { action: "SEND", platform: "whatsapp", keywords: ["send whatsapp", "message on whatsapp", "whatsapp to", "message via whatsapp", "whatsapp message"] },
+  { action: "REPLY", platform: "whatsapp", keywords: ["reply on whatsapp", "respond on whatsapp", "reply to whatsapp"] },
+  { action: "DRAFT", platform: "whatsapp", keywords: ["draft whatsapp", "draft message", "compose whatsapp"] },
+
+  // Gmail Actions
   { action: "READ", platform: "gmail", keywords: ["read", "check mail", "inbox", "new email", "what do i have", "open"] },
   { action: "SUMMARIZE", platform: "gmail", keywords: ["summarize", "summary", "digest", "what is it about"] },
   { action: "REPLY", platform: "gmail", keywords: ["reply", "respond", "answer"] },

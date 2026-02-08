@@ -86,6 +86,11 @@ export const handleRegisterSpeech = (
     }
 
     case "PASSWORD": {
+      // Firebase requires at least 6 characters
+      if (text.length < 6) {
+        speak("Password must be at least 6 characters long. Please say a longer password.");
+        return;
+      }
       setSession((prev) => ({ ...prev, password: text }));
       setStep("CONFIRM_PASSWORD");
       speak(`I captured your password. You said: ${text}. Is that correct?`);

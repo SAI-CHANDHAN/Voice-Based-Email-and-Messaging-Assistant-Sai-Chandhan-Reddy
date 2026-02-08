@@ -14,13 +14,8 @@ import {
   startListening,
 } from "@/lib/govind/voiceStateController";
 import { initPlatforms } from "@/lib/platforms/init";
-
-initPlatforms();
-
-
-
-
 import { bindVoiceLifecycle } from "@/lib/govind/voiceLifecycle";
+import { messagingPlatformService } from "@/services/messagingPlatformService";
 
 // Pages
 import Index from "./pages/Index";
@@ -44,6 +39,28 @@ auth.onAuthStateChanged((user) => {
 });
 
 const queryClient = new QueryClient();
+
+/* ======================================================
+   🚀 PLATFORM INITIALIZATION
+   ====================================================== */
+
+console.log('========================================');
+console.log('🚀 Govind App Initializing...');
+console.log('========================================');
+
+// Initialize all platform adapters (Gmail, Telegram, WhatsApp)
+initPlatforms();
+
+// Initialize messaging platforms from environment
+messagingPlatformService.initializeFromEnv().then((status) => {
+  console.log('[APP] Platform initialization complete:', status);
+  if (status.telegram) console.log('[APP] ✅ Telegram ready');
+  if (status.whatsapp) console.log('[APP] ✅ WhatsApp ready');
+}).catch((err) => {
+  console.error('[APP] Platform initialization error:', err);
+});
+
+console.log('========================================');
 
 /* ======================================================
    🎙️ VOICE BOOTSTRAP (SINGLE ENTRY POINT)
@@ -88,14 +105,10 @@ const VoiceBootstrap = () => {
         // listeners in GovindContext.tsx to ensure single-dispatch and correct state.
         console.log("[VOICE] Lifecycle transcript:", text);
       },
-
-
-
       () => {
         console.log("[VOICE] Reset requested");
       }
     );
-
 
     console.log("[VOICE] Ready — waiting for user gesture");
   }, []);

@@ -64,6 +64,14 @@ export const completeRegistration = async ({
       };
     }
 
+    // Firebase requires at least 6 characters for passwords
+    if (password.length < 6) {
+      throw {
+        message: "Password must be at least 6 characters long",
+        code: "INVALID_INPUT",
+      };
+    }
+
     if (!faceImage) {
       throw {
         message: "Face image is required",
