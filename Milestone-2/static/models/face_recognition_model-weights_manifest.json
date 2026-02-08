@@ -1,0 +1,36 @@
+[
+  {
+      "weights":
+      [
+         
+{"name":"conv32_down/conv/filters","shape":[7,7,3,32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.0005260649557207145,"min":-0.07101876902229645}},
+         
+{"name":"conv32_down/conv/bias","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":8.471445956577858e-7,"min":-0.00014740315964445472}},
+         
+{"name":"conv32_down/scale/weights","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.06814416062598135,"min":5.788674831390381}},
+         
+{"name":"conv32_down/scale/biases","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.008471635042452345,"min":-0.931879854669758}},
+         
+{"name":"conv32_1/conv1/conv/filters","shape":[3,3,32,32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.0007328585666768691,"min":-0.0974701893680236}},
+         
+{"name":"conv32_1/conv1/conv/bias","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":1.5952091238361e-8,"min":-0.000001978059313556764}},
+         
+{"name":"conv32_1/conv1/scale/weights","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.02146628510718252,"min":3.1103382110595703}},
+         
+{"name":"conv32_1/conv1/scale/biases","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.0194976619645661,"min":-2.3787147596770644}},
+         
+{"name":"conv32_1/conv2/conv/filters","shape":[3,3,32,32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.0004114975824075587,"min":-0.05267169054816751}},
+         
+{"name":"conv32_1/conv2/conv/bias","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":4.600177166424806e-9,"min":-5.70421968636676e-7}},
+         
+{"name":"conv32_1/conv2/scale/weights","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.03400764932819441,"min":2.1677730083465576}},
+         
+{"name":"conv32_1/conv2/scale/biases","shape":[32],"dtype":"float32","quantization":{"dtype":"uint8","scale":0.010974494616190593,"min":-1.240117891629537}}
+      ],
+      "paths":
+      [
+         
+"face_recognition_model.bin"
+      ]
+  }
+]
