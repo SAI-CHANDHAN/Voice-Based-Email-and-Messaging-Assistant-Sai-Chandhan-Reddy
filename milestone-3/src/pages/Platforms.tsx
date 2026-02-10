@@ -42,17 +42,3 @@ export const Outlook = () => (
     description="Outlook integration is coming soon. You'll be able to manage your Outlook emails with voice commands." 
   />
 );
-
-export const Telegram = () => (
-  <PlatformPage 
-    name="Telegram" 
-    description="Telegram integration is coming soon. Send and receive messages hands-free." 
-  />
-);
-
-export const WhatsApp = () => (
-  <PlatformPage 
-    name="WhatsApp" 
-    description="WhatsApp integration is coming soon. Manage your WhatsApp conversations with voice." 
-  />
-);

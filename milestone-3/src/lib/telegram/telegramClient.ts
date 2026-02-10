@@ -70,7 +70,8 @@ export class TelegramClient {
     }
 
     try {
-      // Placeholder implementation
+      // Placeholder implementation with mock data for demo
+      // In production, this would use actual Telegram API:
       // const messages = await this.client.getMessages(chatId, limit: limit);
       // return messages.map((msg: any) => ({
       //   id: msg.id,
@@ -79,10 +80,149 @@ export class TelegramClient {
       //   date: msg.date,
       //   chatId: chatId,
       //   senderName: msg.senderFirstName,
+      //   fromSelf: msg.out,
       // }));
 
       console.log(`[TELEGRAM] Fetching ${limit} messages from chat ${chatId}`);
-      return [];
+      
+      // Mock messages based on chat ID
+      const mockMessages: { [key: number]: TelegramMessage[] } = {
+        1: [ // Family Group
+          {
+            id: 1,
+            senderId: 101,
+            text: "Hey everyone! How's it going?",
+            date: new Date(Date.now() - 3600000 * 2),
+            chatId: 1,
+            senderName: "Mom",
+            fromSelf: false,
+          },
+          {
+            id: 2,
+            senderId: 102,
+            text: "Great! Just finished work.",
+            date: new Date(Date.now() - 3600000 * 1.5),
+            chatId: 1,
+            senderName: "Dad",
+            fromSelf: false,
+          },
+          {
+            id: 3,
+            senderId: 999,
+            text: "I'm doing well too! Working on the voice assistant project.",
+            date: new Date(Date.now() - 3600000),
+            chatId: 1,
+            fromSelf: true,
+          },
+          {
+            id: 4,
+            senderId: 103,
+            text: "That sounds exciting! Can't wait to see it.",
+            date: new Date(Date.now() - 1800000),
+            chatId: 1,
+            senderName: "Sister",
+            fromSelf: false,
+          },
+          {
+            id: 5,
+            senderId: 101,
+            text: "See you tomorrow!",
+            date: new Date(Date.now() - 900000),
+            chatId: 1,
+            senderName: "Mom",
+            fromSelf: false,
+          },
+        ],
+        2: [ // Work Team
+          {
+            id: 6,
+            senderId: 201,
+            text: "Meeting at 3 PM today",
+            date: new Date(Date.now() - 7200000),
+            chatId: 2,
+            senderName: "Manager",
+            fromSelf: false,
+          },
+          {
+            id: 7,
+            senderId: 999,
+            text: "I'll be there",
+            date: new Date(Date.now() - 7000000),
+            chatId: 2,
+            fromSelf: true,
+          },
+        ],
+        3: [ // John Smith
+          {
+            id: 8,
+            senderId: 301,
+            text: "Hey, did you get my email?",
+            date: new Date(Date.now() - 5400000),
+            chatId: 3,
+            senderName: "John Smith",
+            fromSelf: false,
+          },
+          {
+            id: 9,
+            senderId: 999,
+            text: "Yes, I just replied to it!",
+            date: new Date(Date.now() - 5000000),
+            chatId: 3,
+            fromSelf: true,
+          },
+          {
+            id: 10,
+            senderId: 301,
+            text: "Thanks for the update",
+            date: new Date(Date.now() - 4800000),
+            chatId: 3,
+            senderName: "John Smith",
+            fromSelf: false,
+          },
+        ],
+        4: [ // Tech Community
+          {
+            id: 11,
+            senderId: 401,
+            text: "Check out this new framework!",
+            date: new Date(Date.now() - 3600000),
+            chatId: 4,
+            senderName: "Developer1",
+            fromSelf: false,
+          },
+          {
+            id: 12,
+            senderId: 402,
+            text: "Looks interesting, going to try it out",
+            date: new Date(Date.now() - 3000000),
+            chatId: 4,
+            senderName: "Developer2",
+            fromSelf: false,
+          },
+        ],
+        5: [ // Sarah Johnson
+          {
+            id: 13,
+            senderId: 999,
+            text: "Want to grab coffee tomorrow?",
+            date: new Date(Date.now() - 9000000),
+            chatId: 5,
+            fromSelf: true,
+          },
+          {
+            id: 14,
+            senderId: 501,
+            text: "Sounds good 👍",
+            date: new Date(Date.now() - 8000000),
+            chatId: 5,
+            senderName: "Sarah Johnson",
+            fromSelf: false,
+          },
+        ],
+      };
+      
+      const messages = mockMessages[chatId] || [];
+      return messages.slice(0, limit);
     } catch (err: any) {
       console.error(`[TELEGRAM] Failed to get messages: ${err.message}`);
       throw err;
@@ -146,6 +286,84 @@ export class TelegramClient {
         success: false,
         error: err.message
       };
+    }
+  }
+
+  /**
+   * Get list of chats/conversations
+   */
+  async getChats(limit: number = 20): Promise<TelegramChat[]> {
+    if (!this.isConnected) {
+      throw new Error("Telegram client not connected");
+    }
+
+    try {
+      // Placeholder implementation with mock data for demo
+      // In production, this would use actual Telegram API:
+      // const dialogs = await this.client.getDialogs({ limit });
+      // return dialogs.map((dialog: any) => ({
+      //   id: dialog.id,
+      //   title: dialog.title || dialog.name,
+      //   isPrivate: dialog.isUser,
+      //   isSupergroup: dialog.isSuperGroup,
+      //   participantsCount: dialog.entity?.participantsCount,
+      //   unreadCount: dialog.unreadCount,
+      //   lastMessage: dialog.message?.text,
+      // }));
+
+      console.log(`[TELEGRAM] Fetching ${limit} chats`);
+      
+      // Mock data for demonstration
+      const mockChats: TelegramChat[] = [
+        {
+          id: 1,
+          title: "Family Group",
+          isPrivate: false,
+          isSupergroup: true,
+          participantsCount: 5,
+          unreadCount: 3,
+          lastMessage: "See you tomorrow!",
+        },
+        {
+          id: 2,
+          title: "Work Team",
+          isPrivate: false,
+          isSupergroup: true,
+          participantsCount: 12,
+          unreadCount: 0,
+          lastMessage: "Meeting at 3 PM",
+        },
+        {
+          id: 3,
+          title: "John Smith",
+          isPrivate: true,
+          isSupergroup: false,
+          unreadCount: 1,
+          lastMessage: "Thanks for the update",
+        },
+        {
+          id: 4,
+          title: "Tech Community",
+          isPrivate: false,
+          isSupergroup: true,
+          participantsCount: 234,
+          unreadCount: 15,
+          lastMessage: "Check out this new framework!",
+        },
+        {
+          id: 5,
+          title: "Sarah Johnson",
+          isPrivate: true,
+          isSupergroup: false,
+          unreadCount: 0,
+          lastMessage: "Sounds good 👍",
+        },
+      ];
+      
+      return mockChats.slice(0, limit);
+    } catch (err: any) {
+      console.error(`[TELEGRAM] Failed to get chats: ${err.message}`);
+      throw err;
     }
   }
 

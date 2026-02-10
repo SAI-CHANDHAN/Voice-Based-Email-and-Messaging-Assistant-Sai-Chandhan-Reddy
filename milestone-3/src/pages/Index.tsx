@@ -45,7 +45,6 @@ const platforms = [
   { icon: Mail, name: 'Gmail', color: 'from-red-500 to-orange-500' },
   { icon: MessageSquare, name: 'Outlook', color: 'from-blue-500 to-cyan-500' },
   { icon: Globe, name: 'Telegram', color: 'from-sky-400 to-blue-500' },
-  { icon: Lock, name: 'WhatsApp', color: 'from-green-500 to-emerald-500' },
 ];
 
 const Index = () => {

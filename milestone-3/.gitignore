@@ -45,3 +45,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Backend session files (contain secrets)
+backend/flask_session/
+backend/sessions/

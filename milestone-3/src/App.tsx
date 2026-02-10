@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { GovindProvider, useGovind } from "@/contexts/GovindContext";
 import { GmailProvider } from "@/contexts/GmailContext";
+import { TelegramProvider } from "@/contexts/TelegramContext";
 import { auth } from "@/lib/firebase/firebase";
 import {
   initVoiceRecognition,
@@ -23,10 +24,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Gmail from "./pages/Gmail";
+import Telegram from "./pages/Telegram";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Docs from "./pages/Docs";
-import { Outlook, Telegram, WhatsApp } from "./pages/Platforms";
+import { Outlook } from "./pages/Platforms";
 import NotFound from "./pages/NotFound";
 import GmailOAuth from "./pages/GmailOAuth";
 
@@ -48,14 +50,13 @@ console.log('========================================');
 console.log('🚀 Govind App Initializing...');
 console.log('========================================');
 
-// Initialize all platform adapters (Gmail, Telegram, WhatsApp)
+// Initialize all platform adapters (Gmail, Telegram)
 initPlatforms();
 
 // Initialize messaging platforms from environment
 messagingPlatformService.initializeFromEnv().then((status) => {
   console.log('[APP] Platform initialization complete:', status);
   if (status.telegram) console.log('[APP] ✅ Telegram ready');
-  if (status.whatsapp) console.log('[APP] ✅ WhatsApp ready');
 }).catch((err) => {
   console.error('[APP] Platform initialization error:', err);
 });
@@ -137,42 +138,43 @@ const App = () => {
 
           {/* 🔐 Gmail must wrap Govind */}
           <GmailProvider>
-            <GovindProvider>
+            <TelegramProvider>
+              <GovindProvider>
 
-              {/* 🎙️ VOICE SYSTEM (GLOBAL, ONCE) */}
-              <VoiceBootstrap />
+                  {/* 🎙️ VOICE SYSTEM (GLOBAL, ONCE) */}
+                  <VoiceBootstrap />
 
-              {/* 🌐 ROUTER */}
-              <Routes>
-                {/* Public */}
-                <Route path="/" element={<Index />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+                {/* 🌐 ROUTER */}
+                <Routes>
+                  {/* Public */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
 
-                {/* Core */}
-                <Route path="/dashboard" element={<Dashboard />} />
+                  {/* Core */}
+                  <Route path="/dashboard" element={<Dashboard />} />
 
-                {/* Platforms */}
-                <Route path="/gmail-oauth" element={<GmailOAuth />} />
-                <Route path="/gmail" element={<Gmail />} />
-                <Route path="/outlook" element={<Outlook />} />
-                <Route path="/telegram" element={<Telegram />} />
-                <Route path="/whatsapp" element={<WhatsApp />} />
+                  {/* Platforms */}
+                  <Route path="/gmail-oauth" element={<GmailOAuth />} />
+                  <Route path="/gmail" element={<Gmail />} />
+                  <Route path="/outlook" element={<Outlook />} />
+                  <Route path="/telegram" element={<Telegram />} />
 
-                {/* User */}
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/docs" element={<Docs />} />
+                  {/* User */}
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/docs" element={<Docs />} />
 
-                {/* Fallback */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  {/* Fallback */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
 
-              {/* 🔔 GLOBAL UI */}
-              <Toaster />
-              <Sonner />
+                {/* 🔔 GLOBAL UI */}
+                <Toaster />
+                <Sonner />
 
-            </GovindProvider>
+                </GovindProvider>
+            </TelegramProvider>
           </GmailProvider>
 
         </BrowserRouter>

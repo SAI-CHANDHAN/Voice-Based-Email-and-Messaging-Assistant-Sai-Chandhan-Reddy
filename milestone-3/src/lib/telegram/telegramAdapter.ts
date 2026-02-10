@@ -29,8 +29,36 @@ export const TelegramAdapter: PlatformAdapter = {
 
       switch (intent.action) {
         case "READ": {
-          // Read recent messages
+          // Read recent messages or chats
           try {
+            // Check if asking for chats overview or specific chat messages
+            const wantsChats = text.includes("chats") || text.includes("conversations") || !text.includes("from") && !text.includes("message");
+            
+            if (wantsChats) {
+              // List recent chats
+              const chats = await client.getChats(10);
+              
+              if (chats.length === 0) {
+                return {
+                  success: true,
+                  message: "You have no recent Telegram chats."
+                };
+              }
+              
+              let spokenText = `You have ${chats.length} Telegram chats. `;
+              const topChats = chats.slice(0, 5);
+              topChats.forEach((chat, idx) => {
+                const unread = chat.unreadCount > 0 ? `, ${chat.unreadCount} unread` : "";
+                spokenText += `${idx + 1}. ${chat.title}${unread}. `;
+              });
+              
+              return {
+                success: true,
+                message: spokenText,
+                data: { chats, type: "CHATS_LIST" }
+              };
+            }
+            
             // Parse chat or user identifier from text
             const chatIdMatch = text.match(/chat[\s:]*(\d+)|from[\s:]*([a-z0-9_]+)/i);
             const chatId = chatIdMatch ? parseInt(chatIdMatch[1]) : -1;
@@ -52,7 +80,7 @@ export const TelegramAdapter: PlatformAdapter = {
             }
 
             // Format messages for voice
-            let spokenText = `You have ${messages.length} new messages. `;
+            let spokenText = `You have ${messages.length} messages. `;
             messages.slice(0, 3).forEach((msg, idx) => {
               spokenText += `Message ${idx + 1} from ${msg.senderName || "Unknown"}: ${msg.text.substring(0, 100)}. `;
             });
@@ -65,7 +93,7 @@ export const TelegramAdapter: PlatformAdapter = {
           } catch (err: any) {
             return {
               success: false,
-              message: "Failed to read messages",
+              message: "Failed to read Telegram messages",
               error: err.message
             };
           }
@@ -182,11 +210,49 @@ export const TelegramAdapter: PlatformAdapter = {
         }
 
         case "SUMMARIZE": {
-          // Summarize messages (future feature)
-          return {
-            success: true,
-            message: "Message summarization for Telegram will be available soon."
-          };
+          // Summarize recent Telegram activity
+          try {
+            const chats = await client.getChats(10);
+            
+            if (chats.length === 0) {
+              return {
+                success: true,
+                message: "You have no Telegram chats to summarize."
+              };
+            }
+            
+            const totalUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+            const activeChats = chats.filter(chat => chat.unreadCount && chat.unreadCount > 0).length;
+            
+            let summary = `Telegram summary: You have ${chats.length} total chats. `;
+            
+            if (totalUnread > 0) {
+              summary += `${totalUnread} unread messages across ${activeChats} conversations. `;
+              
+              // List top 3 chats with unread messages
+              const unreadChats = chats.filter(c => c.unreadCount && c.unreadCount > 0).slice(0, 3);
+              if (unreadChats.length > 0) {
+                summary += "Most active: ";
+                unreadChats.forEach((chat, idx) => {
+                  summary += `${chat.title} with ${chat.unreadCount} unread${idx < unreadChats.length - 1 ? ", " : ". "}`;
+                });
+              }
+            } else {
+              summary += "All chats are up to date. ";
+            }
+            
+            return {
+              success: true,
+              message: summary,
+              data: { chats, totalUnread, activeChats }
+            };
+          } catch (err: any) {
+            return {
+              success: false,
+              message: "Failed to summarize Telegram activity",
+              error: err.message
+            };
+          }
         }
 
         default: {

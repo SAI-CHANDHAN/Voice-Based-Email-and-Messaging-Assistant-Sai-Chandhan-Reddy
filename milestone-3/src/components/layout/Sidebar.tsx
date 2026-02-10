@@ -34,7 +34,6 @@ const platformItems: NavItem[] = [
   { icon: Mail, label: 'Gmail', href: '/gmail', badge: '3' },
   { icon: MessageSquare, label: 'Outlook', href: '/outlook' },
   { icon: Send, label: 'Telegram', href: '/telegram' },
-  { icon: Phone, label: 'WhatsApp', href: '/whatsapp' },
 ];
 
 const bottomItems: NavItem[] = [

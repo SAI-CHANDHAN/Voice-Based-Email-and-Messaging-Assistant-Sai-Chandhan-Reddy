@@ -11,6 +11,7 @@ import React, {
 
 import { detectIntent } from "@/lib/govind/intentMap";
 import { useGmail } from "@/contexts/GmailContext";
+import { useTelegram } from "@/contexts/TelegramContext";
 import { onAuthChange } from "@/lib/firebase/auth";
 import { speakText } from "@/services/ttsService";
 import type { GovindState } from "@/lib/govind/stateMachine";
@@ -132,8 +133,8 @@ export const GovindProvider = ({ children }: { children: ReactNode }) => {
   const openAssistant = () => setIsAssistantOpen(true);
   const closeAssistant = () => setIsAssistantOpen(false);
   const [assistantEnabled, setAssistantEnabled] = useState(false);
-  // 🔹 Voice routing mode (GLOBAL = default, GMAIL = Gmail commands)
-  const [voiceMode, setVoiceMode] = useState<"GLOBAL" | "GMAIL" | "COMPOSE_FLOW">("GLOBAL");
+  // 🔹 Voice routing mode (GLOBAL = default, GMAIL = Gmail commands, COMPOSE_FLOW = Gmail compose, TELEGRAM_COMPOSE_FLOW = Telegram compose)
+  const [voiceMode, setVoiceMode] = useState<"GLOBAL" | "GMAIL" | "COMPOSE_FLOW" | "TELEGRAM_COMPOSE_FLOW">("GLOBAL");
 
   const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [authStep, setAuthStep] = useState<AuthStep>("IDLE");
@@ -148,9 +149,18 @@ export const GovindProvider = ({ children }: { children: ReactNode }) => {
   const composeStepRef = useRef(composeStep);
   const composeDataRef = useRef({ to: '', subject: '', body: '' });
 
+  // 📱 Telegram Compose State (Voice Flow)
+  const [telegramComposeStep, setTelegramComposeStep] = useState<"IDLE" | "TO" | "CONFIRM_TO" | "MESSAGE" | "CONFIRM_SEND">("IDLE");
+  const telegramComposeStepRef = useRef(telegramComposeStep);
+  const telegramComposeDataRef = useRef({ to: '', chatId: null as number | null, message: '' });
+
   useEffect(() => {
     composeStepRef.current = composeStep;
   }, [composeStep]);
+
+  useEffect(() => {
+    telegramComposeStepRef.current = telegramComposeStep;
+  }, [telegramComposeStep]);
 
 
 
@@ -204,6 +214,7 @@ export const GovindProvider = ({ children }: { children: ReactNode }) => {
   // 🔹 Gmail actions for voice control
   // 🔹 Gmail context (guarded to prevent crash if provider not mounted)
   const gmail = useGmail();
+  const telegram = useTelegram();
 
   // ✅ Prevent stale state in async callbacks
   const authStepRef = useRef<AuthStep>("IDLE");
@@ -622,7 +633,115 @@ export const GovindProvider = ({ children }: { children: ReactNode }) => {
   const handleIntent = async (text: string) => {
     console.log("[INTENT] processing:", text, "Auth:", authModeRef.current, "Voice:", voiceModeRef.current, "Step:", composeStepRef.current);
 
-    // 📧 GMAIL COMPOSE FLOW (Interceptive & AI-Powered)
+    // � TELEGRAM COMPOSE FLOW (Interceptive & Voice-Guided)
+    if (voiceModeRef.current === "TELEGRAM_COMPOSE_FLOW") {
+      const lower = text.toLowerCase();
+
+      // Global exit/cancel in the middle of a flow
+      if (lower.includes("cancel") || lower.includes("stop") || lower.includes("exit")) {
+        speak("Cancelled message.");
+        telegram.setIsComposeOpen(false);
+        setVoiceMode("GLOBAL");
+        setTelegramComposeStep("IDLE");
+        return;
+      }
+
+      // --- STEP 1: CAPTURE RECIPIENT ---
+      if (telegramComposeStepRef.current === "TO") {
+        // Clean up the recipient name
+        let recipient = text.trim();
+        // Store the recipient name
+        const newData = { ...telegramComposeDataRef.current, to: recipient };
+        telegramComposeDataRef.current = newData;
+        // Enhanced matching: case-insensitive with multiple strategies
+        const normRecipient = recipient.toLowerCase().trim().replace(/\s+/g, " ");
+        let matchingChat = telegram.chats.find(chat => {
+          const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+          return normTitle.includes(normRecipient) || normRecipient.includes(normTitle);
+        });
+        // Fallback: First word match
+        if (!matchingChat) {
+          const firstWord = normRecipient.split(" ")[0];
+          matchingChat = telegram.chats.find(chat => {
+            const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+            const chatFirstWord = normTitle.split(" ")[0];
+            return chatFirstWord === firstWord;
+          });
+        }
+        if (matchingChat) {
+          newData.chatId = matchingChat.id;
+          telegramComposeDataRef.current = newData;
+          setTelegramComposeStep("CONFIRM_TO");
+          speak(`I found ${matchingChat.title}. Is that correct?`);
+        } else {
+          setTelegramComposeStep("CONFIRM_TO");
+          speak(`I'll message ${recipient}. Is that correct? If not, say who you want to message.`);
+        }
+        return;
+      }
+
+      // --- STEP 2: CONFIRM RECIPIENT ---
+      if (telegramComposeStepRef.current === "CONFIRM_TO") {
+        if (lower.includes("yes") || lower.includes("correct") || lower.includes("yeah") || lower.includes("right")) {
+          if (!telegramComposeDataRef.current.chatId) {
+            speak("I couldn't find that contact. Please say the name again.");
+            setTelegramComposeStep("TO");
+            return;
+          }
+          setTelegramComposeStep("MESSAGE");
+          speak("What would you like to say in the message?");
+        } else {
+          setTelegramComposeStep("TO");
+          speak("Who should I send this message to?");
+        }
+        return;
+      }
+
+      // --- STEP 3: CAPTURE MESSAGE ---
+      if (telegramComposeStepRef.current === "MESSAGE") {
+        const newData = { ...telegramComposeDataRef.current, message: text };
+        telegramComposeDataRef.current = newData;
+        setTelegramComposeStep("CONFIRM_SEND");
+        speak(`Your message is: "${text}". Shall I send it?`);
+        return;
+      }
+
+      // --- STEP 4: CONFIRM SEND ---
+      if (telegramComposeStepRef.current === "CONFIRM_SEND") {
+        if (lower.includes("yes") || lower.includes("send") || lower.includes("yeah") || lower.includes("do it")) {
+          speak("Sending message now.");
+          try {
+            const { chatId, message } = telegramComposeDataRef.current;
+            if (chatId) {
+              await telegram.sendMessage(chatId, message);
+              telegram.setIsComposeOpen(false);
+              setVoiceMode("GLOBAL");
+              setTelegramComposeStep("IDLE");
+              speak("Message sent successfully.");
+            } else {
+              throw new Error("Chat not found");
+            }
+          } catch (err: any) {
+            console.error("Telegram send failed", err);
+            speak("I'm sorry, I couldn't send the message. There was an error.");
+          }
+          return;
+        }
+
+        if (lower.includes("no") || lower.includes("stop") || lower.includes("cancel") || lower.includes("change")) {
+          speak("Starting over. Who should I message?");
+          setTelegramComposeStep("TO");
+          const resetData = { to: '', chatId: null, message: '' };
+          telegramComposeDataRef.current = resetData;
+          return;
+        }
+
+        speak("Shall I send the message? Say yes or no.");
+        return;
+      }
+    }
+
+    // �📧 GMAIL COMPOSE FLOW (Interceptive & AI-Powered)
     if (voiceModeRef.current === "COMPOSE_FLOW") {
       const lower = text.toLowerCase();
 
@@ -804,13 +923,117 @@ export const GovindProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // 🚀 5. Platform Execution (SP4)
-    // 🚀 5. Platform Execution (SP4)
     if (intent.platform !== "system") {
-      // Specialized handling for OPEN_PLATFORM if UI action is needed
       // Specialized handling for OPEN_PLATFORM if UI action is needed
       if (intent.action === "OPEN_PLATFORM" && intent.platform === "gmail") {
         speak("Opening Gmail.");
         setRouteIntent("/gmail");
+        return;
+      }
+
+      if (intent.action === "OPEN_PLATFORM" && intent.platform === "telegram") {
+        speak("Opening Telegram.");
+        setRouteIntent("/telegram");
+        return;
+      }
+
+      // Telegram platform navigation (open telegram)
+      if (intent.action === "OPEN_PLATFORM" && intent.platform === "telegram") {
+        setRouteIntent("/telegram");
+        speak("Opening Telegram.");
+        return;
+      }
+
+      // Telegram: open chat with person (open chat with... or chat with...)
+      if (intent.action === "SEND" && intent.platform === "telegram" && (intent.text.toLowerCase().includes("open chat with") || intent.text.toLowerCase().includes("chat with"))) {
+        const recipient = intent.entities.to;
+        setRouteIntent("/telegram");
+        if (recipient) {
+          // Enhanced matching: case-insensitive with multiple strategies
+          const normRecipient = recipient.toLowerCase().trim().replace(/\s+/g, " ");
+          let matchingChat = telegram.chats.find(chat => {
+            const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+            return normTitle.includes(normRecipient) || normRecipient.includes(normTitle);
+          });
+          // Fallback: First word match
+          if (!matchingChat) {
+            const firstWord = normRecipient.split(" ")[0];
+            matchingChat = telegram.chats.find(chat => {
+              const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+              const chatFirstWord = normTitle.split(" ")[0];
+              return chatFirstWord === firstWord;
+            });
+          }
+          if (matchingChat) {
+            telegram.selectChat(matchingChat); // Always update selectedChat
+            speak(`Opening chat with ${matchingChat.title}.`);
+            setVoiceMode("GLOBAL");
+            telegram.setIsComposeOpen(false);
+            return;
+          } else {
+            speak(`I couldn't find a chat with ${recipient}. Please say the exact name.`);
+            return;
+          }
+        } else {
+          speak("Who would you like to chat with?");
+          return;
+        }
+      }
+
+      // Telegram: send message to person (send message to ...)
+      if (intent.action === "SEND" && intent.platform === "telegram" && intent.text.toLowerCase().includes("send message to")) {
+        const recipient = intent.entities.to;
+        setRouteIntent("/telegram");
+        if (recipient) {
+          // Enhanced matching: case-insensitive with multiple strategies
+          const normRecipient = recipient.toLowerCase().trim().replace(/\s+/g, " ");
+          
+          // Strategy 1: Exact/partial match
+          let matchingChat = telegram.chats.find(chat => {
+            const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+            return normTitle.includes(normRecipient) || normRecipient.includes(normTitle);
+          });
+          
+          // Strategy 2: First word match (e.g., "Parthiv" matches "Parthiv Sharma")
+          if (!matchingChat) {
+            const firstWord = normRecipient.split(" ")[0];
+            matchingChat = telegram.chats.find(chat => {
+              const normTitle = chat.title.toLowerCase().trim().replace(/\s+/g, " ");
+              const chatFirstWord = normTitle.split(" ")[0];
+              return chatFirstWord === firstWord;
+            });
+          }
+          
+          if (matchingChat) {
+            telegram.selectChat(matchingChat);
+            speak(`Opening chat with ${matchingChat.title}. What message would you like to send?`);
+            setVoiceMode("TELEGRAM_COMPOSE_FLOW");
+            telegram.setIsComposeOpen(true);
+            setTelegramComposeStep("MESSAGE");
+            return;
+          } else {
+            // List available chats for debugging
+            const chatNames = telegram.chats.slice(0, 3).map(c => c.title).join(", ");
+            speak(`I couldn't find a chat with ${recipient}. Your chats include ${chatNames}. Please say the exact name.`);
+            return;
+          }
+        } else {
+          speak("Who would you like to message?");
+          setVoiceMode("TELEGRAM_COMPOSE_FLOW");
+          telegram.setIsComposeOpen(true);
+          setTelegramComposeStep("TO");
+          return;
+        }
+      }
+
+      // Telegram: summarize this chat
+      if (intent.action === "SUMMARIZE" && intent.platform === "telegram") {
+        if (telegram.selectedChat) {
+          // Placeholder: call summarization service here
+          speak(`Summarizing chat with ${telegram.selectedChat.title}. (Summary feature coming soon.)`);
+        } else {
+          speak("Please open a chat first to summarize.");
+        }
         return;
       }
 

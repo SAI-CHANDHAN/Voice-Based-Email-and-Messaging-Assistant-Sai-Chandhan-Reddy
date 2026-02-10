@@ -34,7 +34,6 @@ export interface UserProfile {
     gmail: boolean;
     outlook: boolean;
     telegram: boolean;
-    whatsapp: boolean;
   };
 }
 
@@ -72,7 +71,6 @@ export const createUserProfile = async (
       gmail: false,
       outlook: false,
       telegram: false,
-      whatsapp: false,
     },
   };
 

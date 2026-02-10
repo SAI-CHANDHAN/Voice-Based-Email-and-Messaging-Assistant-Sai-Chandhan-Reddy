@@ -12,6 +12,7 @@ export interface TelegramMessage {
   senderName?: string;
   isReply?: boolean;
   replyToId?: number;
+  fromSelf?: boolean;
 }
 
 /**
@@ -23,6 +24,8 @@ export interface TelegramChat {
   isPrivate: boolean;
   isSupergroup: boolean;
   participantsCount?: number;
+  unreadCount?: number;
+  lastMessage?: string;
 }
 
 /**
